@@ -1,5 +1,5 @@
 #ifndef ICG_HPP
-#define ICH_HPP
+#define ICG_HPP
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -28,11 +28,13 @@ extern vector<Node*> unitList;
 extern vector<SymbolInfo*> globalVarList;
 extern vector<Node*> exprList;
 
+// Has only the global variables and functions inserted at start
 extern SymbolTable table;
 
 void init();
 void init_main();
 
+// Functions corresponding to (almost )each non-terminal
 void expression_statement(Node* node);
 void variable(Node* node);
 void expression(Node* node);
