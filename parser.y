@@ -13,6 +13,7 @@ using std::vector, std::string, std::isnan, std::toupper;
 int yyparse(void);
 int yylex(void);
 
+// I/O files
 extern FILE *yyin;
 FILE *logout;
 FILE *errout;
@@ -20,16 +21,22 @@ FILE *parseout;
 std::ofstream tempcode;
 std::ofstream code;
 
+// counters
 extern int line_count;
 extern int error_count;
 
 SymbolTable table(11);
 
+// temporary containers
 string currType;
 vector<SymbolInfo*> currVars;
 vector<SymbolInfo*> currParams;
 vector<string> argList;
+vector<Node*> unitList;
+vector<SymbolInfo*> globalVarList;
+vector<Node*> exprList;
 
+// function helpers
 bool inFunction = false;
 string returnType;
 
@@ -235,18 +242,21 @@ unit : var_declaration{
 		$$ = new Node(false, "unit");
 		$$->children.push_back($1);
 		$$->update_line();
+		unitList.push_back($1);
 	}
     | func_declaration{
 		log_print("unit : func_declaration");
 		$$ = new Node(false, "unit");
 		$$->children.push_back($1);
 		$$->update_line();
+		unitList.push_back($1);
 	}
     | func_definition{
 		log_print("unit : func_definition");
 		$$ = new Node(false, "unit");
 		$$->children.push_back($1);
 		$$->update_line();
+		unitList.push_back($1);
 	}
 	| error {
 		log_print("unit : error");
@@ -667,6 +677,7 @@ var_declaration : type_specifier declaration_list SEMICOLON {
 						fprintf(logout, "Line# %d: Identifier %s already in use\n", currVars[i]->line, currVars[i]->name.c_str());
 						error_count++;
 					}
+					if(currVars[i]->id == 1) globalVarList.push_back(new SymbolInfo(currVars[i]));
 				}
 			}
 			currVars.clear();
@@ -937,6 +948,7 @@ expression_statement : SEMICOLON {
 				$$ = new Node(false, "expression_statement");
 				$$->children.push_back(new Node(true, "SEMICOLON", ";", $1));
 				$$->update_line();
+				exprList.push_back($$);
 			}
 			| expression SEMICOLON {
 				log_print("expression_statement : expression SEMICOLON");
@@ -944,7 +956,8 @@ expression_statement : SEMICOLON {
 				$$->children.push_back($1);
 				$$->children.push_back(new Node(true, "SEMICOLON", ";", $2));
 				$$->update_line();
-				expression_statement($$);
+				exprList.push_back($$);
+				// expression_statement($$);
 			}
 			| expression error { // Semicolon missing, catcher a lot of other errors
 				log_print("expression_statement : expression error");
@@ -1400,6 +1413,8 @@ int main(int argc,char *argv[])
 	fprintf(logout, "Total Lines: %d\n", line_count);
 	fprintf(logout, "Total Errors: %d\n", error_count);
 	print_tree(parseout, 0, root);
+
+	init();
 
 	fclose(fin);
 	fclose(logout);

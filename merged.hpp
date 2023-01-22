@@ -52,6 +52,19 @@ public:
         func = nullptr;
     }
 
+    SymbolInfo(SymbolInfo* s) {
+        id = s->id;
+        x = s->x;
+        y = s->y;
+        name = s->name;
+        type = s->type;
+        next = s->next;
+        line = s->line;
+        isArray = s->isArray;
+        if(s->func == nullptr || s->func == NULL) func = s->func;
+        else func = new FunctionContainer(s->func->retType, s->func->params); 
+    }
+
     ~SymbolInfo(){
         if(func != nullptr) delete func;
     }

@@ -24,7 +24,17 @@ string get_label() {
     return "L" + to_string(labelCount++);
 }
 
+extern vector<Node*> unitList;
+extern vector<SymbolInfo*> globalVarList;
+extern vector<Node*> exprList;
+
+extern SymbolTable table;
+
+void init();
+void init_main();
+
 void expression_statement(Node* node);
+void variable(Node* node);
 void expression(Node* node);
 void logic_expression(Node* node);
 void rel_expression(Node* node);
@@ -44,11 +54,42 @@ fptr_expr_void get_expr_void_funct(string label) {
     if(label == "factor") return factor;
 }
 
+void init() {
+    tempcode << ".MODEL SMALL" << ENDL;
+    tempcode << ".STACK 100H" << ENDL;
+    tempcode << ".DATA" << ENDL;
+    for(int i=0; i<globalVarList.size(); i++) {
+        tempcode << "\t" << globalVarList[i]->name << " DW 0" << ENDL;
+        delete globalVarList[i];
+    }
+    globalVarList.clear();
+    tempcode << ".CODE" << ENDL;
+    init_main();
+}
+
+void init_main() {
+    tempcode << "MAIN PROC" << ENDL;
+    tempcode << "\tMOV AX , @DATA" << ENDL;
+    tempcode << "\tMOV DS , AX" << ENDL;
+    for(int i=0; i<exprList.size(); i++)
+        expression_statement(exprList[i]);
+    tempcode << "MAIN ENDP" << ENDL;
+    tempcode << "END MAIN" << ENDL;
+}
+
 void expression_statement(Node* node) {
     tempcode << get_label() << ":\t\t;" << "Line " << node->startLine << " to " << node->endLine << ENDL;
     if(node->children.size() == 1) return;
     expression(node->children[0]);
     tempcode << "\tPOP AX" << ENDL;
+}
+
+void variable(Node* node) {
+    SymbolInfo* info = table.lookup(node->children[0]->lexeme);
+    if(node->children.size() == 1 && info->id == 1) { // global non-array variable
+        tempcode << "\tPUSH " << info->name << ENDL;
+        return;
+    }
 }
 
 void expression(Node* node) {
@@ -57,6 +98,16 @@ void expression(Node* node) {
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
         fptr_expr_void func = get_expr_void_funct(currNode->label);
         func(currNode);
+        return;
+    }
+
+    logic_expression(node->children[2]);
+    Node* variable = node->children[0];
+    SymbolInfo* info = table.lookup(variable->children[0]->lexeme);
+    if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
+        tempcode << "\tPOP AX" << ENDL;
+        tempcode << "\tMOV " << info->name << " , AX" << ENDL;
+        tempcode << "\tPUSH AX" << ENDL;
         return;
     }
 }
@@ -92,8 +143,8 @@ void simple_expression(Node* node) {
 
     simple_expression(node->children[0]);
     term(node->children[2]);
-    tempcode << "\tPOP AX" << ENDL;
     tempcode << "\tPOP BX" << ENDL;
+    tempcode << "\tPOP AX" << ENDL;
     
     string op = node->children[1]->lexeme;
     if(op == "+") {
@@ -151,6 +202,11 @@ void factor(Node* node) {
 
     if(label == "LPAREN") {
         expression(node->children[1]);
+        return;
+    }
+
+    if(label == "variable") { 
+        variable(node->children[0]);
         return;
     }
 }
