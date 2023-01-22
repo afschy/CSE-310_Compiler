@@ -13,6 +13,8 @@
 using std::vector, std::string, std::isnan, std::to_string;
 #define ENDL "\n";
 
+typedef void (*fptr_expr_void)(Node* node);
+
 extern std::ofstream tempcode;
 extern std::ofstream code;
 
@@ -31,6 +33,17 @@ void term(Node* node);
 void unary_expression(Node* node);
 void factor(Node* node);
 
+fptr_expr_void get_expr_void_funct(string label) {
+    if(label == "expression_statement") return expression_statement;
+    if(label == "expression") return expression;
+    if(label == "logic_expression") return logic_expression;
+    if(label == "rel_expression") return rel_expression;
+    if(label == "simple_expression") return simple_expression;
+    if(label == "term") return term;
+    if(label == "unary_expression") return unary_expression;
+    if(label == "factor") return factor;
+}
+
 void expression_statement(Node* node) {
     tempcode << get_label() << ":\t\t;" << "Line " << node->startLine << " to " << node->endLine << ENDL;
     if(node->children.size() == 1) return;
@@ -40,28 +53,40 @@ void expression_statement(Node* node) {
 
 void expression(Node* node) {
     if(node->children.size() == 1) {
-        logic_expression(node->children[0]);
+        Node* currNode = node;
+        while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
+        fptr_expr_void func = get_expr_void_funct(currNode->label);
+        func(currNode);
         return;
     }
 }
 
 void logic_expression(Node* node) {
     if(node->children.size() == 1) {
-        rel_expression(node->children[0]);
+        Node* currNode = node;
+        while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
+        fptr_expr_void func = get_expr_void_funct(currNode->label);
+        func(currNode);
         return;
     }
 }
 
 void rel_expression(Node* node) {
     if(node->children.size() == 1) {
-        simple_expression(node->children[0]);
+        Node* currNode = node;
+        while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
+        fptr_expr_void func = get_expr_void_funct(currNode->label);
+        func(currNode);
         return;
     }
 }
 
 void simple_expression(Node* node) {
     if(node->children.size() == 1) {
-        term(node->children[0]);
+        Node* currNode = node;
+        while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
+        fptr_expr_void func = get_expr_void_funct(currNode->label);
+        func(currNode);
         return;
     }
 
@@ -72,17 +97,20 @@ void simple_expression(Node* node) {
     
     string op = node->children[1]->lexeme;
     if(op == "+") {
-        tempcode << "\tADD AX, BX" << ENDL;
+        tempcode << "\tADD AX , BX" << ENDL;
     }
     else {
-        tempcode << "\tSUB AX, BX" << ENDL;
+        tempcode << "\tSUB AX , BX" << ENDL;
     }
     tempcode << "\tPUSH AX" << ENDL;
 }
 
 void term(Node* node) {
     if(node->children.size() == 1) {
-        unary_expression(node->children[0]);
+        Node* currNode = node;
+        while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
+        fptr_expr_void func = get_expr_void_funct(currNode->label);
+        func(currNode);
         return;
     }
 
@@ -117,8 +145,7 @@ void unary_expression(Node* node) {
 void factor(Node* node) {
     string label = node->children[0]->label;
     if(label == "CONST_INT" || label == "CONST_FLOAT") {
-        tempcode << "\tMOV AX, " << stoi(node->children[0]->lexeme) << ENDL;
-        tempcode << "\tPUSH AX" << ENDL;
+        tempcode << "\tPUSH " << stoi(node->children[0]->lexeme) << ENDL;
         return;
     }
 
