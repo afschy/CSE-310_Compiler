@@ -4,8 +4,10 @@
 #include<cstring>
 #include<cmath>
 #include<vector>
+#include<fstream>
 #include "node.hpp"
 #include "merged.hpp"
+#include "icg.hpp"
 using std::vector, std::string, std::isnan, std::toupper;
 
 int yyparse(void);
@@ -15,6 +17,8 @@ extern FILE *yyin;
 FILE *logout;
 FILE *errout;
 FILE *parseout;
+std::ofstream tempcode;
+std::ofstream code;
 
 extern int line_count;
 extern int error_count;
@@ -940,6 +944,7 @@ expression_statement : SEMICOLON {
 				$$->children.push_back($1);
 				$$->children.push_back(new Node(true, "SEMICOLON", ";", $2));
 				$$->update_line();
+				expression_statement($$);
 			}
 			| expression error { // Semicolon missing, catcher a lot of other errors
 				log_print("expression_statement : expression error");
@@ -1164,24 +1169,6 @@ term : unary_expression {
 				fprintf(logout, "Line# %d: (warning) Mod by 0\n", $2->line);
 			}
 
-			// if($2->name == "/" && $3->children.size() > 0 && $3->children[0]->label == "factor") {
-			// 	Node* factor = $3->children[0];
-			// 	if(factor->children.size() == 1 && factor->children[0]->label == "CONST_INT") {
-			// 		int value = stoi(factor->children[0]->lexeme);
-			// 		if(value == 0) {
-			// 			fprintf(errout, "Line# %d: (warning) division by 0\n", $2->line);
-			// 			fprintf(logout, "Line# %d: (warning) division by 0\n", $2->line);
-			// 		}
-			// 	}
-			// 	else if(factor->children.size() == 1 && factor->children[0]->label == "CONST_FLOAT") {
-			// 		float value = stof(factor->children[0]->lexeme);
-			// 		if(value == 0.0) {
-			// 			fprintf(errout, "Line# %d: (warning) division by 0\n", $2->line);
-			// 			fprintf(logout, "Line# %d: (warning) division by 0\n", $2->line);
-			// 		}
-			// 	}
-			// }
-
 			if($2->name=="/" && !isnan($3->eval) && $3->eval==0) {
 				fprintf(errout, "Line# %d: (warning) Division by 0\n", $2->line);
 				fprintf(logout, "Line# %d: (warning) Division by 0\n", $2->line);
@@ -1403,6 +1390,8 @@ int main(int argc,char *argv[])
 	logout= fopen("log.txt","w");
 	errout = fopen("error.txt", "w");
 	parseout = fopen("parsetree.txt", "w");
+	tempcode.open("tempcode.asm", std::ofstream::out);
+	code.open("code.asm", std::ofstream::out);
 
 	yyin=fin;
 	yyparse();
@@ -1416,6 +1405,8 @@ int main(int argc,char *argv[])
 	fclose(logout);
 	fclose(errout);
 	fclose(parseout);
+	tempcode.close();
+	code.close();
 	delete root;
 	
 	return 0;
