@@ -628,6 +628,7 @@ compound_statement : LCURL start_scope statements RCURL {
 				$$->children.push_back($3);
 				$$->children.push_back(new Node(true, "RCURL", "}", $4));
 				$$->update_line();
+				exprList.push_back($3);
 			}
  		    | LCURL start_scope RCURL {
 				log_print("compound_statement : LCURL RCURL");
@@ -845,14 +846,14 @@ statement : var_declaration {
 			$$ = new Node(false, "statement");
 			$$->children.push_back($1);
 			$$->update_line();
-			exprList.push_back($$);
+			// exprList.push_back($$);
 		}
 		| expression_statement {
 			log_print("statement : expression_statement");
 			$$ = new Node(false, "statement");
 			$$->children.push_back($1);
 			$$->update_line();
-			exprList.push_back($$);
+			// exprList.push_back($$);
 		}
 		| compound_statement {
 			log_print("statement: compound_statement");

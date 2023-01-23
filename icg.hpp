@@ -82,24 +82,24 @@ void init_main() {
     tempcode << "\tMOV BP , SP" << ENDL;
     table.enter_scope();
     for(int i=0; i<exprList.size(); i++)
-        statement(exprList[i]);
+        statements(exprList[i]);
     tempcode << "MAIN ENDP" << ENDL;
     tempcode << "END MAIN" << ENDL;
 }
 
 void statements(Node* node) {
-    if(node->children.size() == 1) // statements : statement
+    // statements : statement
+    if(node->children.size() == 1) {
+        std::cout<<"In rule 0" << ENDL;
         return statement(node->children[0]);
+    }
     
     vector<Node*> statementList;
     Node* stmt = node;
-    while(true) {
-        if(node->children.size() == 1) { // statements : statement
-            statementList.push_back(node->children[0]);
-            break;
-        }
-        // statements : statements statement
-        statementList.push_back(node->children[1]);
+    while(stmt->label == "statements") {
+        if(stmt->children.size() == 1) 
+            statementList.push_back(stmt->children[0]);
+        else statementList.push_back(stmt->children[1]);
         stmt = stmt->children[0];
     }
 
@@ -112,6 +112,21 @@ void statement(Node* node) {
         return var_declaration(node->children[0]);
     if(node->children[0]->label == "expression_statement")
         return expression_statement(node->children[0]);
+    
+    // IF LPAREN expression RPAREN statement
+    if(node->children[0]->label == "IF" && node->children.size() == 5) {
+        expression(node->children[2]);
+
+        string next_label = get_label(), end_label = get_label();
+        tempcode << "\tPOP AX" << ENDL;
+        tempcode << "\tCMP AX , 0" << ENDL;
+        tempcode << "\tJNE " << next_label << ENDL;
+        tempcode << "\tJMP " << end_label << ENDL;
+        tempcode << next_label << ":" << ENDL;
+        statement(node->children[4]);
+        tempcode << end_label << ":" << ENDL;
+        return;
+    }
 }
 
 void var_declaration(Node* node) {
