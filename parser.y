@@ -514,6 +514,8 @@ func_definition : type_specifier ID LPAREN parameter_list RPAREN {insert_functio
 			$$->children.push_back(new Node(true, "RPAREN", ")", $4));
 			$$->children.push_back($6);
 			$$->update_line();
+			
+			exprList.push_back($6);
 		}
 		| error ID LPAREN parameter_list RPAREN {insert_function("VOID", $2);} compound_statement { // Wrong or missing type specifier
 			log_print("func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement");
@@ -628,7 +630,6 @@ compound_statement : LCURL start_scope statements RCURL {
 				$$->children.push_back($3);
 				$$->children.push_back(new Node(true, "RCURL", "}", $4));
 				$$->update_line();
-				exprList.push_back($3);
 			}
  		    | LCURL start_scope RCURL {
 				log_print("compound_statement : LCURL RCURL");

@@ -36,6 +36,7 @@ void init();
 void init_main();
 
 // Functions corresponding to (almost )each non-terminal
+void compound_statement(Node* node);
 void statements(Node* node);
 void statement(Node* node);
 void var_declaration(Node* node);
@@ -80,11 +81,20 @@ void init_main() {
     tempcode << "\tMOV DS , AX" << ENDL;
     tempcode << "\tPUSH BP" << ENDL;
     tempcode << "\tMOV BP , SP" << ENDL;
-    table.enter_scope();
+    // table.enter_scope();
     for(int i=0; i<exprList.size(); i++)
-        statements(exprList[i]);
+        compound_statement(exprList[i]);
     tempcode << "MAIN ENDP" << ENDL;
     tempcode << "END MAIN" << ENDL;
+}
+
+void compound_statement(Node* node) {
+    if(node->children.size() == 2) return; // LCURL RCURL
+    table.enter_scope();
+    tempcode << "\n\t; Compund statement starting at line " << node->startLine << ENDL;
+    statements(node->children[1]);
+    tempcode << "\t; Compund statement ending at line " << node->endLine << ENDL;
+    table.exit_scope();
 }
 
 void statements(Node* node) {
@@ -112,6 +122,8 @@ void statement(Node* node) {
         return var_declaration(node->children[0]);
     if(node->children[0]->label == "expression_statement")
         return expression_statement(node->children[0]);
+    if(node->children[0]->label == "compound_statement")
+        return compound_statement(node->children[0]);
     
     // IF LPAREN expression RPAREN statement
     if(node->children[0]->label == "IF" && node->children.size() == 5) {
@@ -195,10 +207,11 @@ void var_declaration(Node* node) {
 }
 
 void expression_statement(Node* node) {
-    tempcode << get_label() << ":\t\t;" << "Line " << node->startLine << " to " << node->endLine << ENDL;
     if(node->children.size() == 1) return;
+    tempcode << "\n\t; Expression statement starting at line " << node->startLine << ENDL;
     expression(node->children[0]);
     tempcode << "\tPOP AX" << ENDL;
+    tempcode << "\t; Expression statement ending at line " << node->endLine << ENDL;
 }
 
 void variable(Node* node) {
