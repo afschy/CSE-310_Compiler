@@ -406,9 +406,30 @@ void factor(Node* node) {
 
     if(label == "LPAREN")
         return expression(node->children[1]);
-
-    if(label == "variable")
+    if(label == "variable" && node->children.size() == 1)
         return variable(node->children[0]);
+    
+    if(label == "variable") {
+        variable(node->children[0]);
+        Node* variable = node->children[0];
+        SymbolInfo* info = table.lookup(variable->children[0]->lexeme);
+        
+        if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
+            if(node->children[1]->label == "INCOP") {
+                tempcode << "\tADD " << info->name << " , 1" << ENDL;
+            }
+            else tempcode << "\tSUB " << info->name << " , 1" << ENDL;
+            return;
+        }
+
+        if(variable->children.size() == 1) { // local non-array variable
+            if(node->children[1]->label == "INCOP") {
+                tempcode << "\tADD BP[" << info->stackOffset << "] , 1" << ENDL;
+            }
+            else tempcode << "\tSUB BP[" << info->stackOffset << "] , 1" << ENDL;
+            return;
+        }
+    }
 }
 
 #endif
