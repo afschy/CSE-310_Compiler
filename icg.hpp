@@ -19,6 +19,7 @@ extern std::ofstream tempcode;
 extern std::ofstream code;
 
 int labelCount = 0;
+int currStack = 0;
 
 string get_label() {
     return "L" + to_string(labelCount++);
@@ -35,7 +36,11 @@ void init();
 void init_main();
 
 // Functions corresponding to (almost )each non-terminal
+void statements(Node* node);
+void statement(Node* node);
+void var_declaration(Node* node);
 void expression_statement(Node* node);
+
 void variable(Node* node);
 void expression(Node* node);
 void logic_expression(Node* node);
@@ -73,10 +78,83 @@ void init_main() {
     tempcode << "MAIN PROC" << ENDL;
     tempcode << "\tMOV AX , @DATA" << ENDL;
     tempcode << "\tMOV DS , AX" << ENDL;
+    tempcode << "\tPUSH BP" << ENDL;
+    tempcode << "\tMOV BP , SP" << ENDL;
+    table.enter_scope();
     for(int i=0; i<exprList.size(); i++)
-        expression_statement(exprList[i]);
+        statement(exprList[i]);
     tempcode << "MAIN ENDP" << ENDL;
     tempcode << "END MAIN" << ENDL;
+}
+
+void statements(Node* node) {
+    if(node->children.size() == 1) // statements : statement
+        return statement(node->children[0]);
+    
+    vector<Node*> statementList;
+    Node* stmt = node;
+    while(true) {
+        if(node->children.size() == 1) { // statements : statement
+            statementList.push_back(node->children[0]);
+            break;
+        }
+        // statements : statements statement
+        statementList.push_back(node->children[1]);
+        stmt = stmt->children[0];
+    }
+
+    for(int i=statementList.size()-1; i>=0; i--)
+        statement(statementList[i]);
+}
+
+void statement(Node* node) {
+    if(node->children[0]->label == "var_declaration")
+        return var_declaration(node->children[0]);
+    if(node->children[0]->label == "expression_statement")
+        return expression_statement(node->children[0]);
+}
+
+void var_declaration(Node* node) {
+    string typeSpecifier = node->children[0]->children[0]->label;
+    vector<SymbolInfo*> varList;
+    Node* decl = node->children[1]; // declaration_list
+
+    string name;
+    int line;
+    while(decl->label == "declaration_list") {
+        if(decl->children.size() == 1) { // ID
+            name = decl->children[0]->lexeme;
+            line = decl->children[0]->startLine;
+            varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+        }
+        else if(decl->children.size() == 4) { // ID LTHIRD CONST_INT RTHIRD
+            name = decl->children[0]->lexeme;
+            line = decl->children[0]->startLine;
+            varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+            varList[varList.size()-1]->isArray = true;
+            varList[varList.size()-1]->arrSize = stoi(decl->children[2]->lexeme);
+        }
+        else if(decl->children.size() == 3) { // declaration_list COMMA ID
+            name = decl->children[2]->lexeme;
+            line = decl->children[2]->startLine;
+            varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+        }
+        else { // declaration_list COMMA ID LTHIRD CONST_INT RTHIRD
+            name = decl->children[2]->lexeme;
+            line = decl->children[2]->startLine;
+            varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+            varList[varList.size()-1]->isArray = true;
+            varList[varList.size()-1]->arrSize = stoi(decl->children[4]->lexeme);
+        }
+        decl = decl->children[0];
+    }
+    
+    for(int i=varList.size()-1; i>=0; i--) {
+        currStack -= 2;
+        varList[i]->stackOffset = currStack;
+        table.insert(varList[i]);
+        tempcode << "\tSUB SP , 2" << ENDL;
+    }
 }
 
 void expression_statement(Node* node) {
@@ -92,6 +170,10 @@ void variable(Node* node) {
         tempcode << "\tPUSH " << info->name << ENDL;
         return;
     }
+    if(node->children.size() == 1) { // local non-array variable
+        tempcode << "\tPUSH BP[" << info->stackOffset << "]" << ENDL;
+        return;
+    }
 }
 
 void expression(Node* node) {
@@ -99,16 +181,23 @@ void expression(Node* node) {
         Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
         fptr_expr_void func = get_expr_void_funct(currNode->label);
-        func(currNode);
-        return;
+        return func(currNode);
     }
 
     logic_expression(node->children[2]);
     Node* variable = node->children[0];
     SymbolInfo* info = table.lookup(variable->children[0]->lexeme);
+    
     if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
         tempcode << "\tPOP AX" << ENDL;
         tempcode << "\tMOV " << info->name << " , AX" << ENDL;
+        tempcode << "\tPUSH AX" << ENDL;
+        return;
+    }
+
+    if(variable->children.size() == 1) { // local non-array variable
+        tempcode << "\tPOP AX" << ENDL;
+        tempcode << "\tMOV BP[" << info->stackOffset << "] , AX" << ENDL;
         tempcode << "\tPUSH AX" << ENDL;
         return;
     }
@@ -119,8 +208,7 @@ void logic_expression(Node* node) {
         Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
         fptr_expr_void func = get_expr_void_funct(currNode->label);
-        func(currNode);
-        return;
+        return func(currNode);
     }
 
     rel_expression(node->children[0]);
@@ -157,8 +245,7 @@ void rel_expression(Node* node) {
         Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
         fptr_expr_void func = get_expr_void_funct(currNode->label);
-        func(currNode);
-        return;
+        return func(currNode);
     }
 
     simple_expression(node->children[0]);
@@ -189,8 +276,7 @@ void simple_expression(Node* node) {
         Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
         fptr_expr_void func = get_expr_void_funct(currNode->label);
-        func(currNode);
-        return;
+        return func(currNode);
     }
 
     simple_expression(node->children[0]);
@@ -212,8 +298,7 @@ void term(Node* node) {
         Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
         fptr_expr_void func = get_expr_void_funct(currNode->label);
-        func(currNode);
-        return;
+        return func(currNode);
     }
 
     term(node->children[0]);
@@ -238,10 +323,8 @@ void term(Node* node) {
 }
 
 void unary_expression(Node* node) {
-    if(node->children.size() == 1) {
-        factor(node->children[0]);
-        return;
-    }
+    if(node->children.size() == 1) 
+        return factor(node->children[0]);
 
     unary_expression(node->children[1]);
     string op = node->children[0]->lexeme;
@@ -271,15 +354,11 @@ void factor(Node* node) {
         return;
     }
 
-    if(label == "LPAREN") {
-        expression(node->children[1]);
-        return;
-    }
+    if(label == "LPAREN")
+        return expression(node->children[1]);
 
-    if(label == "variable") { 
-        variable(node->children[0]);
-        return;
-    }
+    if(label == "variable")
+        return variable(node->children[0]);
 }
 
 #endif

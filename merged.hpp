@@ -31,6 +31,8 @@ public:
     SymbolInfo* next;
     int line;
     bool isArray;
+    int arrSize;
+    int stackOffset;
     FunctionContainer* func;
 
     SymbolInfo(int id=-1, int x=-1, std::string name="", std::string type="", SymbolInfo* next = nullptr){
@@ -41,6 +43,7 @@ public:
         this->next = next;
         isArray = false;
         func = nullptr;
+        arrSize = 1;
     }
 
     SymbolInfo(const char* name, const char* type, int line){
@@ -50,6 +53,7 @@ public:
         next = nullptr;
         isArray = false;
         func = nullptr;
+        arrSize = 1;
     }
 
     SymbolInfo(SymbolInfo* s) {
@@ -62,7 +66,9 @@ public:
         line = s->line;
         isArray = s->isArray;
         if(s->func == nullptr || s->func == NULL) func = s->func;
-        else func = new FunctionContainer(s->func->retType, s->func->params); 
+        else func = new FunctionContainer(s->func->retType, s->func->params);
+        arrSize = s->arrSize;
+        stackOffset = s->stackOffset;
     }
 
     ~SymbolInfo(){

@@ -845,12 +845,14 @@ statement : var_declaration {
 			$$ = new Node(false, "statement");
 			$$->children.push_back($1);
 			$$->update_line();
+			exprList.push_back($$);
 		}
 		| expression_statement {
 			log_print("statement : expression_statement");
 			$$ = new Node(false, "statement");
 			$$->children.push_back($1);
 			$$->update_line();
+			exprList.push_back($$);
 		}
 		| compound_statement {
 			log_print("statement: compound_statement");
@@ -956,7 +958,7 @@ expression_statement : SEMICOLON {
 				$$->children.push_back($1);
 				$$->children.push_back(new Node(true, "SEMICOLON", ";", $2));
 				$$->update_line();
-				exprList.push_back($$);
+				// exprList.push_back($$);
 				// expression_statement($$);
 			}
 			| expression error { // Semicolon missing, catcher a lot of other errors
