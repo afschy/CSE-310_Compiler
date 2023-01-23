@@ -178,6 +178,26 @@ void statement(Node* node) {
 
         tempcode << end_label << ":\t; while loop ending at line " << node->endLine << ENDL;
     }
+
+    // FOR LPAREN expression_statement expression_statement expression RPAREN statement
+    if(node->children[0]->label == "FOR") {
+        tempcode << "\n\t; for loop starting at line " << node->startLine;
+        expression_statement(node->children[2]);
+        string start_label = get_label(), body_label = get_label(), end_label = get_label();
+
+        tempcode << start_label << ":" << ENDL;
+        expression_statement(node->children[3]);
+        tempcode << "\tCMP AX , 0" << ENDL;
+        tempcode << "\tJNE " << body_label << ENDL;
+        tempcode << "\tJMP " << end_label << ENDL;
+
+        tempcode << body_label << ":" << ENDL;
+        statement(node->children[6]);
+        expression(node->children[4]);
+        tempcode << "\tJMP " << start_label << ENDL;
+
+        tempcode << end_label << ":\t; while loop ending at line " << node->endLine << ENDL;
+    }
 }
 
 void var_declaration(Node* node) {
