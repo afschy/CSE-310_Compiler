@@ -100,7 +100,6 @@ void compound_statement(Node* node) {
 void statements(Node* node) {
     // statements : statement
     if(node->children.size() == 1) {
-        std::cout<<"In rule 0" << ENDL;
         return statement(node->children[0]);
     }
     
@@ -127,7 +126,7 @@ void statement(Node* node) {
     
     // IF LPAREN expression RPAREN statement
     if(node->children[0]->label == "IF" && node->children.size() == 5) {
-        tempcode << "\n\t;if statement starting at line " << node->startLine << ENDL;
+        tempcode << "\n\t; if statement starting at line " << node->startLine << ENDL;
         expression(node->children[2]);
 
         string next_label = get_label(), end_label = get_label();
@@ -138,13 +137,13 @@ void statement(Node* node) {
         tempcode << next_label << ":" << ENDL;
         statement(node->children[4]);
         tempcode << end_label << ":" << ENDL;
-        tempcode << "\t;if statement ending at line " << node->endLine << ENDL;
+        tempcode << "\t; if statement ending at line " << node->endLine << ENDL;
         return;
     }
 
     // IF LPAREN expression RPAREN statement ELSE statement
     if(node->children[0]->label == "IF") {
-        tempcode << "\n\t;if-else statement starting at line " << node->startLine << ENDL;
+        tempcode << "\n\t; if-else statement starting at line " << node->startLine << ENDL;
         expression(node->children[2]);
 
         string if_label = get_label(), else_label = get_label(), end_label = get_label();
@@ -158,8 +157,26 @@ void statement(Node* node) {
         tempcode << else_label << ":" << ENDL;
         statement(node->children[6]);
         tempcode << end_label << ":" << ENDL;
-        tempcode << "\t;if-else statement ending at line " << node->endLine << ENDL;
+        tempcode << "\t; if-else statement ending at line " << node->endLine << ENDL;
         return;
+    }
+
+    // WHILE LPAREN expression RPAREN statement
+    if(node->children[0]->label == "WHILE") {
+        string start_label = get_label(), body_label = get_label(), end_label = get_label();
+        
+        tempcode << start_label << ":\t; while loop starting at line " << node->startLine << ENDL;
+        expression(node->children[2]);
+        tempcode << "\tPOP AX" << ENDL;
+        tempcode << "\tCMP AX , 0" << ENDL;
+        tempcode << "\tJNE " << body_label << ENDL;
+        tempcode << "\tJMP " << end_label << ENDL;
+
+        tempcode << body_label << ":" << ENDL;
+        statement(node->children[4]);
+        tempcode << "\tJMP " << start_label << ENDL;
+
+        tempcode << end_label << ":\t; while loop ending at line " << node->endLine << ENDL;
     }
 }
 
