@@ -122,6 +122,34 @@ void logic_expression(Node* node) {
         func(currNode);
         return;
     }
+
+    rel_expression(node->children[0]);
+    rel_expression(node->children[2]);
+    tempcode << "\tPOP AX" << ENDL;
+    tempcode << "\tPOP BX" << ENDL;
+    string zero_label = get_label(), end_label = get_label(); 
+
+    if(node->children[1]->lexeme == "||") {
+        tempcode << "\tOR AX , BX" << ENDL;
+        tempcode << "\tCMP AX , 0" << ENDL;
+        tempcode << "\tJE " << zero_label << ENDL;
+        tempcode << "\tPUSH 1" << ENDL;
+        tempcode << "\tJMP " << end_label << ENDL;
+        tempcode << zero_label << ":" << ENDL;
+        tempcode << "\tPUSH 0" << ENDL;
+        tempcode << end_label << ":" << ENDL;
+        return;
+    }
+
+    tempcode << "\tCMP AX , 0" << ENDL;
+    tempcode << "\tJE " << zero_label << ENDL;
+    tempcode << "\tCMP BX , 0" << ENDL;
+    tempcode << "\tJE " << zero_label << ENDL;
+    tempcode << "\tPUSH 1" << ENDL;
+    tempcode << "\tJMP " << end_label << ENDL;
+    tempcode << zero_label << ":" << ENDL;
+    tempcode << "\tPUSH 0" << ENDL;
+    tempcode << end_label << ":" << ENDL;
 }
 
 void rel_expression(Node* node) {
@@ -132,6 +160,28 @@ void rel_expression(Node* node) {
         func(currNode);
         return;
     }
+
+    simple_expression(node->children[0]);
+    simple_expression(node->children[2]);
+    tempcode << "\tPOP BX" << ENDL;
+    tempcode << "\tPOP AX" << ENDL;
+    string one_label = get_label(), end_label = get_label();
+    string op = node->children[1]->lexeme;
+
+    tempcode << "\tCMP AX , BX" << ENDL;
+
+    if(op == "<") tempcode << "\tJL " << one_label << ENDL;
+    if(op == "<=") tempcode << "\tJLE " << one_label << ENDL;
+    if(op == ">") tempcode << "\tJG " << one_label << ENDL;
+    if(op == ">=") tempcode << "\tJGE " << one_label << ENDL;
+    if(op == "==") tempcode << "\tJE " << one_label << ENDL;
+    if(op == "!=") tempcode << "\tJNE " << one_label << ENDL;
+
+    tempcode << "\tPUSH 0" << ENDL;
+    tempcode << "\tJMP " << end_label << ENDL;
+    tempcode << one_label << ":" << ENDL;
+    tempcode << "\tPUSH 1" << ENDL;
+    tempcode << end_label << ":" << ENDL;
 }
 
 void simple_expression(Node* node) {
@@ -148,8 +198,7 @@ void simple_expression(Node* node) {
     tempcode << "\tPOP BX" << ENDL;
     tempcode << "\tPOP AX" << ENDL;
     
-    string op = node->children[1]->lexeme;
-    if(op == "+") {
+    if(node->children[1]->lexeme == "+") {
         tempcode << "\tADD AX , BX" << ENDL;
     }
     else {
@@ -193,6 +242,26 @@ void unary_expression(Node* node) {
         factor(node->children[0]);
         return;
     }
+
+    unary_expression(node->children[1]);
+    string op = node->children[0]->lexeme;
+    if(op == "+") return;
+    if(op == "-") {
+        tempcode << "\tPOP AX" << ENDL;
+        tempcode << "\tNEG AX" << ENDL;
+        tempcode << "\tPUSH AX" << ENDL;
+        return;
+    }
+    // op == "!"
+    string one_label = get_label(), end_label = get_label();
+    tempcode << "\tPOP AX" << ENDL;
+    tempcode << "\tCMP AX , 0" << ENDL;
+    tempcode << "\tJE " << one_label << ENDL;
+    tempcode << "\tPUSH 0" << ENDL;
+    tempcode << "\tJMP " << end_label << ENDL;
+    tempcode << one_label << ":" << ENDL;
+    tempcode << "\tPUSH 1" << ENDL;
+    tempcode << end_label << ":" << ENDL;
 }
 
 void factor(Node* node) {
