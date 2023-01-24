@@ -294,12 +294,21 @@ void expression_statement(Node* node) {
 
 void variable(Node* node) {
     SymbolInfo* info = table.lookup(node->children[0]->lexeme);
+
     if(node->children.size() == 1 && info->id == 1) { // global non-array variable
         tempcode << "\tPUSH " << info->name << ENDL;
         return;
     }
+
     if(node->children.size() == 1) { // local non-array variable
         tempcode << "\tPUSH BP[" << info->stackOffset << "]" << ENDL;
+        return;
+    }
+
+    if(info->id == 1) { // global array
+        expression(node->children[2]);
+        tempcode << "\tPOP SI" << ENDL;
+        tempcode << "\tPUSH " << info->name << "[SI]" << ENDL;
         return;
     }
 }
@@ -327,6 +336,15 @@ void expression(Node* node) {
     if(variable->children.size() == 1) { // local non-array variable
         tempcode << "\tPOP AX" << ENDL;
         tempcode << "\tMOV BP[" << info->stackOffset << "] , AX" << ENDL;
+        tempcode << "\tPUSH AX" << ENDL;
+        return;
+    }
+
+    if(info->id == 1) { // global array
+        tempcode << "\tPOP AX" << ENDL;
+        expression(variable->children[2]);
+        tempcode << "\tPOP SI" << ENDL;
+        tempcode << "\tMOV " << info->name << "[SI] , AX" << ENDL;
         tempcode << "\tPUSH AX" << ENDL;
         return;
     }
@@ -507,6 +525,14 @@ void factor(Node* node) {
                 tempcode << "\tADD BP[" << info->stackOffset << "] , 1" << ENDL;
             }
             else tempcode << "\tSUB BP[" << info->stackOffset << "] , 1" << ENDL;
+            return;
+        }
+
+        if(info->id == 1) { // global array
+            if(node->children[1]->label == "INCOP") {
+                tempcode << "\tADD " << info->name << "[SI] , 1" << ENDL;
+            }
+            else tempcode << "\tSUB " << info->name << "[SI] , 1" << ENDL;
             return;
         }
     }
