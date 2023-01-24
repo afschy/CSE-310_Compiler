@@ -225,9 +225,10 @@ void statement(Node* node) {
         tempcode << body_label << ":" << ENDL;
         statement(node->children[6]);
         expression(node->children[4]);
+        tempcode << "\tPOP AX" << ENDL;
         tempcode << "\tJMP " << start_label << ENDL;
 
-        tempcode << end_label << ":\t; while loop ending at line " << node->endLine << ENDL;
+        tempcode << end_label << ":\t; for loop ending at line " << node->endLine << ENDL;
         return;
     }
 
