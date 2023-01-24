@@ -18,6 +18,9 @@ typedef void (*fptr_expr_void)(Node* node);
 extern std::ofstream tempcode;
 extern std::ofstream code;
 
+// Used in return statements to jump to the label before RET
+string return_label;
+
 int labelCount = 0;
 int currStack = 0;
 
@@ -32,10 +35,9 @@ extern vector<Node*> exprList;
 // Has only the global variables and functions inserted at start
 extern SymbolTable table;
 
-void init();
-void init_main();
-
 // Functions corresponding to (almost )each non-terminal
+void start();
+
 void compound_statement(Node* node);
 void statements(Node* node);
 void statement(Node* node);
@@ -62,7 +64,7 @@ fptr_expr_void get_expr_void_funct(string label) {
     if(label == "factor") return factor;
 }
 
-void init() {
+void start() {
     tempcode << ".MODEL SMALL" << ENDL;
     tempcode << ".STACK 100H" << ENDL;
     tempcode << ".DATA" << ENDL;
@@ -72,20 +74,39 @@ void init() {
     }
     globalVarList.clear();
     tempcode << ".CODE" << ENDL;
-    init_main();
-}
+    // init_main();
 
-void init_main() {
-    tempcode << "MAIN PROC" << ENDL;
-    tempcode << "\tMOV AX , @DATA" << ENDL;
-    tempcode << "\tMOV DS , AX" << ENDL;
-    tempcode << "\tPUSH BP" << ENDL;
-    tempcode << "\tMOV BP , SP" << ENDL;
-    // table.enter_scope();
-    for(int i=0; i<exprList.size(); i++)
-        compound_statement(exprList[i]);
-    tempcode << "MAIN ENDP" << ENDL;
-    tempcode << "END MAIN" << ENDL;
+    Node* currFunc;
+    SymbolInfo* info;
+    for(int i=0; i<unitList.size(); i++) {
+        if(unitList[i]->label != "func_definition") continue;
+        currFunc = unitList[i];
+        info = table.lookup(currFunc->children[1]->lexeme);
+        tempcode << "\n" << info->name << " PROC" << ENDL;
+
+        if(info->name == "main") {
+            tempcode << "\tMOV AX , @DATA" << ENDL;
+            tempcode << "\tMOV DS , AX" << ENDL;
+        }
+
+        tempcode << "\tPUSH BP" << ENDL;
+        tempcode << "\tMOV BP , SP" << ENDL;
+
+        return_label = get_label();
+        compound_statement(currFunc->children[currFunc->children.size()-1]);
+
+        tempcode << return_label << ":" << ENDL;
+        if(info->name == "main") {
+            tempcode << "\tMOV AH , 4CH" << ENDL;
+            tempcode << "\tINT 21H" << ENDL;
+        }
+        else {
+            tempcode << "\tPOP BP" << ENDL;
+            tempcode << "\tRET" << ENDL;
+        }
+        tempcode << info->name << " ENDP" << ENDL;
+    }
+    tempcode << "\nEND MAIN" << ENDL;
 }
 
 void compound_statement(Node* node) {
@@ -177,6 +198,7 @@ void statement(Node* node) {
         tempcode << "\tJMP " << start_label << ENDL;
 
         tempcode << end_label << ":\t; while loop ending at line " << node->endLine << ENDL;
+        return;
     }
 
     // FOR LPAREN expression_statement expression_statement expression RPAREN statement
@@ -197,6 +219,16 @@ void statement(Node* node) {
         tempcode << "\tJMP " << start_label << ENDL;
 
         tempcode << end_label << ":\t; while loop ending at line " << node->endLine << ENDL;
+        return;
+    }
+
+    // RETURN expression SEMICOLON
+    if(node->children[0]->label == "RETURN") {
+        tempcode << "\t; Return statement at line " << node->startLine << ENDL;
+        expression(node->children[1]);
+        tempcode << "\tPOP AX" << ENDL;
+        tempcode << "\tJMP " << return_label << ENDL;
+        return;
     }
 }
 
@@ -243,7 +275,7 @@ void var_declaration(Node* node) {
     }
 }
 
-void expression_statement(Node* node) {
+void expression_statement(Node* node) { 
     if(node->children.size() == 1) return;
     tempcode << "\n\t; Expression statement starting at line " << node->startLine << ENDL;
     expression(node->children[0]);
@@ -271,6 +303,7 @@ void expression(Node* node) {
         return func(currNode);
     }
 
+    // Starting variable assignment
     logic_expression(node->children[2]);
     Node* variable = node->children[0];
     SymbolInfo* info = table.lookup(variable->children[0]->lexeme);
@@ -301,11 +334,11 @@ void logic_expression(Node* node) {
     rel_expression(node->children[0]);
     rel_expression(node->children[2]);
     tempcode << "\tPOP AX" << ENDL;
-    tempcode << "\tPOP BX" << ENDL;
+    tempcode << "\tPOP CX" << ENDL;
     string zero_label = get_label(), end_label = get_label(); 
 
     if(node->children[1]->lexeme == "||") {
-        tempcode << "\tOR AX , BX" << ENDL;
+        tempcode << "\tOR AX , CX" << ENDL;
         tempcode << "\tCMP AX , 0" << ENDL;
         tempcode << "\tJE " << zero_label << ENDL;
         tempcode << "\tPUSH 1" << ENDL;
@@ -318,7 +351,7 @@ void logic_expression(Node* node) {
 
     tempcode << "\tCMP AX , 0" << ENDL;
     tempcode << "\tJE " << zero_label << ENDL;
-    tempcode << "\tCMP BX , 0" << ENDL;
+    tempcode << "\tCMP CX , 0" << ENDL;
     tempcode << "\tJE " << zero_label << ENDL;
     tempcode << "\tPUSH 1" << ENDL;
     tempcode << "\tJMP " << end_label << ENDL;
@@ -337,12 +370,12 @@ void rel_expression(Node* node) {
 
     simple_expression(node->children[0]);
     simple_expression(node->children[2]);
-    tempcode << "\tPOP BX" << ENDL;
+    tempcode << "\tPOP CX" << ENDL;
     tempcode << "\tPOP AX" << ENDL;
     string one_label = get_label(), end_label = get_label();
     string op = node->children[1]->lexeme;
 
-    tempcode << "\tCMP AX , BX" << ENDL;
+    tempcode << "\tCMP AX , CX" << ENDL;
 
     if(op == "<") tempcode << "\tJL " << one_label << ENDL;
     if(op == "<=") tempcode << "\tJLE " << one_label << ENDL;
@@ -368,14 +401,14 @@ void simple_expression(Node* node) {
 
     simple_expression(node->children[0]);
     term(node->children[2]);
-    tempcode << "\tPOP BX" << ENDL;
+    tempcode << "\tPOP CX" << ENDL;
     tempcode << "\tPOP AX" << ENDL;
     
     if(node->children[1]->lexeme == "+") {
-        tempcode << "\tADD AX , BX" << ENDL;
+        tempcode << "\tADD AX , CX" << ENDL;
     }
     else {
-        tempcode << "\tSUB AX , BX" << ENDL;
+        tempcode << "\tSUB AX , CX" << ENDL;
     }
     tempcode << "\tPUSH AX" << ENDL;
 }
@@ -390,21 +423,21 @@ void term(Node* node) {
 
     term(node->children[0]);
     unary_expression(node->children[2]);
-    tempcode << "\tPOP BX" << ENDL;
+    tempcode << "\tPOP CX" << ENDL;
     tempcode << "\tPOP AX" << ENDL;
     
     if(node->children[1]->lexeme == "*") {
-        tempcode << "\tIMUL BX" << ENDL;
+        tempcode << "\tIMUL CX" << ENDL;
         tempcode << "\tPUSH AX" << ENDL;
     }
     else if(node->children[1]->lexeme == "/") {
         tempcode << "\tCWD" << ENDL;
-        tempcode << "\tIDIV BX" << ENDL;
+        tempcode << "\tIDIV CX" << ENDL;
         tempcode << "\tPUSH AX" << ENDL;
     }
     else {
         tempcode << "\tCWD" << ENDL;
-        tempcode << "\tIDIV BX" << ENDL;
+        tempcode << "\tIDIV CX" << ENDL;
         tempcode << "\tPUSH DX" << ENDL;
     }
 }
@@ -466,6 +499,11 @@ void factor(Node* node) {
             else tempcode << "\tSUB BP[" << info->stackOffset << "] , 1" << ENDL;
             return;
         }
+    }
+
+    if(label == "ID") {
+        tempcode << "\tCALL " << node->children[0]->lexeme << ENDL;
+        tempcode << "\tPUSH AX" << ENDL; // Return value was stored in AX
     }
 }
 

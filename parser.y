@@ -515,7 +515,7 @@ func_definition : type_specifier ID LPAREN parameter_list RPAREN {insert_functio
 			$$->children.push_back($6);
 			$$->update_line();
 			
-			exprList.push_back($6);
+			// exprList.push_back($6);
 		}
 		| error ID LPAREN parameter_list RPAREN {insert_function("VOID", $2);} compound_statement { // Wrong or missing type specifier
 			log_print("func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement");
@@ -1418,7 +1418,7 @@ int main(int argc,char *argv[])
 	fprintf(logout, "Total Errors: %d\n", error_count);
 	print_tree(parseout, 0, root);
 
-	init();
+	start();
 
 	fclose(fin);
 	fclose(logout);
