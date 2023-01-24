@@ -110,6 +110,7 @@ void start() {
         else {
             tempcode << "\tADD SP , " << -currStack << ENDL;
             tempcode << "\tPOP BP" << ENDL;
+            // TODO: RET 2*(NUMBER OF PARAMS)
             tempcode << "\tRET" << ENDL;
         }
         tempcode << info->name << " ENDP" << ENDL;
@@ -276,11 +277,14 @@ void var_declaration(Node* node) {
     }
     
     for(int i=varList.size()-1; i>=0; i--) {
-        if(!varList[i]->isArray) currStack -= 2;
+        if(!varList[i]->isArray) {
+            currStack -= 2;
+            varList[i]->arrSize = 1;
+        }
         else currStack -= 2 * varList[i]->arrSize;
         varList[i]->stackOffset = currStack;
         table.insert(varList[i]);
-        tempcode << "\tSUB SP , 2" << ENDL;
+        tempcode << "\tSUB SP , " << 2*varList[i]->arrSize << ENDL;
     }
 }
 
@@ -308,9 +312,17 @@ void variable(Node* node) {
     if(info->id == 1) { // global array
         expression(node->children[2]);
         tempcode << "\tPOP SI" << ENDL;
+        tempcode << "\tSHL SI , 1" << ENDL;
         tempcode << "\tPUSH " << info->name << "[SI]" << ENDL;
         return;
     }
+
+    // local array
+    expression(node->children[2]);
+    tempcode << "\tPOP SI" << ENDL;
+    tempcode << "\tSHL SI , 1" << ENDL;
+    tempcode << "\tADD SI , " << info->stackOffset << ENDL;
+    tempcode << "\tPUSH BP[SI]" << ENDL;
 }
 
 void expression(Node* node) {
@@ -341,13 +353,23 @@ void expression(Node* node) {
     }
 
     if(info->id == 1) { // global array
-        tempcode << "\tPOP AX" << ENDL;
+        tempcode << "\tPOP BX" << ENDL;
         expression(variable->children[2]);
         tempcode << "\tPOP SI" << ENDL;
-        tempcode << "\tMOV " << info->name << "[SI] , AX" << ENDL;
-        tempcode << "\tPUSH AX" << ENDL;
+        tempcode << "\tSHL SI , 1" << ENDL;
+        tempcode << "\tMOV " << info->name << "[SI] , BX" << ENDL;
+        tempcode << "\tPUSH BX" << ENDL;
         return;
     }
+
+    // local array
+    tempcode << "\tPOP BX" << ENDL;
+    expression(variable->children[2]);
+    tempcode << "\tPOP SI" << ENDL;
+    tempcode << "\tSHL SI , 1" << ENDL;
+    tempcode << "\tADD SI , " << info->stackOffset << ENDL;
+    tempcode << "\tMOV BP[SI] , BX" << ENDL;
+    tempcode << "\tPUSH BX" << ENDL;
 }
 
 void logic_expression(Node* node) {
@@ -535,6 +557,13 @@ void factor(Node* node) {
             else tempcode << "\tSUB " << info->name << "[SI] , 1" << ENDL;
             return;
         }
+
+        // local array
+        if(node->children[1]->label == "INCOP") {
+            tempcode << "\tADD " << "BP[SI] , 1" << ENDL;
+        }
+        else tempcode << "\tSUB " << "BP[SI] , 1" << ENDL;
+        return;
     }
 
     if(label == "ID") {
