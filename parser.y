@@ -758,6 +758,7 @@ declaration_list : declaration_list COMMA ID {
 			log_print("declaration_list : declaration_list COMMA ID LSQUARE CONST_INT RSQUARE");
 			SymbolInfo* info = $3;
 			info->isArray = true;
+			info->arrSize = stoi($5->name);
 			currVars.push_back(info);
 
 			$$ = new Node(false, "declaration_list");
@@ -798,6 +799,7 @@ declaration_list : declaration_list COMMA ID {
 			log_print("declaration_list : ID LSQUARE CONST_INT RSQUARE");
 			SymbolInfo* info = $1;
 			info->isArray = true;
+			info->arrSize = stoi($3->name);
 			currVars.push_back(info);
 
 			$$ = new Node(false, "declaration_list");

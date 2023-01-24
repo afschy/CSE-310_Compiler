@@ -21,6 +21,9 @@ extern std::ofstream code;
 // Used in return statements to jump to the label before RET
 string return_label;
 
+// Used to restore stack
+int local_var_count;
+
 int labelCount = 0;
 int currStack = 0;
 
@@ -69,7 +72,10 @@ void start() {
     tempcode << ".STACK 100H" << ENDL;
     tempcode << ".DATA" << ENDL;
     for(int i=0; i<globalVarList.size(); i++) {
-        tempcode << "\t" << globalVarList[i]->name << " DW 0" << ENDL;
+        if(globalVarList[i]->isArray)
+            tempcode << "\t" << globalVarList[i]->name << " DW " << globalVarList[i]->arrSize << " DUP (0000H)" << "\n";
+        else
+            tempcode << "\t" << globalVarList[i]->name << " DW 0" << "\n";
         delete globalVarList[i];
     }
     globalVarList.clear();
@@ -93,6 +99,7 @@ void start() {
         tempcode << "\tMOV BP , SP" << ENDL;
 
         return_label = get_label();
+        currStack = 0;
         compound_statement(currFunc->children[currFunc->children.size()-1]);
 
         tempcode << return_label << ":" << ENDL;
@@ -101,6 +108,7 @@ void start() {
             tempcode << "\tINT 21H" << ENDL;
         }
         else {
+            tempcode << "\tADD SP , " << -currStack << ENDL;
             tempcode << "\tPOP BP" << ENDL;
             tempcode << "\tRET" << ENDL;
         }
@@ -268,7 +276,8 @@ void var_declaration(Node* node) {
     }
     
     for(int i=varList.size()-1; i>=0; i--) {
-        currStack -= 2;
+        if(!varList[i]->isArray) currStack -= 2;
+        else currStack -= 2 * varList[i]->arrSize;
         varList[i]->stackOffset = currStack;
         table.insert(varList[i]);
         tempcode << "\tSUB SP , 2" << ENDL;
@@ -470,7 +479,8 @@ void unary_expression(Node* node) {
 void factor(Node* node) {
     string label = node->children[0]->label;
     if(label == "CONST_INT" || label == "CONST_FLOAT") {
-        tempcode << "\tPUSH " << stoi(node->children[0]->lexeme) << ENDL;
+        tempcode << "\tMOV AX , " << stoi(node->children[0]->lexeme) << ENDL;
+        tempcode << "\tPUSH AX"<< ENDL;
         return;
     }
 
