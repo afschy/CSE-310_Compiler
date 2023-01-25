@@ -41,7 +41,7 @@ extern SymbolTable table;
 void start();
 
 void compound_statement(Node* node);
-void compound_statement(Node* node, vector<SymbolInfo> paramList);
+void compound_statement(Node* node, vector<SymbolInfo>& paramList);
 void statements(Node* node);
 void statement(Node* node);
 void var_declaration(Node* node);
@@ -213,7 +213,7 @@ void compound_statement(Node* node) {
     table.exit_scope();
 }
 
-void compound_statement(Node* node, vector<SymbolInfo> paramList) {
+void compound_statement(Node* node, vector<SymbolInfo>& paramList) {
     if(node->children.size() == 2) return;
     table.enter_scope();
 
