@@ -42,6 +42,7 @@ extern SymbolTable table;
 void start();
 
 void compound_statement(Node* node);
+void compound_statement(Node* node, vector<SymbolInfo> paramList);
 void statements(Node* node);
 void statement(Node* node);
 void var_declaration(Node* node);
@@ -55,6 +56,7 @@ void simple_expression(Node* node);
 void term(Node* node);
 void unary_expression(Node* node);
 void factor(Node* node);
+void argument_list(Node* node);
 
 fptr_expr_void get_expr_void_funct(string label) {
     if(label == "expression_statement") return expression_statement;
@@ -65,6 +67,84 @@ fptr_expr_void get_expr_void_funct(string label) {
     if(label == "term") return term;
     if(label == "unary_expression") return unary_expression;
     if(label == "factor") return factor;
+}
+
+// To know the amount of stack space to set aside for local variables
+int compound_statement_varcount(Node* node);
+int statements_varcount(Node* node);
+int statement_varcount(Node* node);
+int var_declaration_varcount(Node* node);
+
+int compound_statement_varcount(Node* node) {
+    if(node->children.size() == 2) return 0; // LCURL RCURL
+    return statements_varcount(node->children[1]);
+}
+
+int statements_varcount(Node* node) {
+    // statements : statement
+    if(node->children.size() == 1) {
+        return statement_varcount(node->children[0]);
+    }
+    
+    vector<Node*> statementList;
+    Node* stmt = node;
+    while(stmt->label == "statements") {
+        if(stmt->children.size() == 1) 
+            statementList.push_back(stmt->children[0]);
+        else statementList.push_back(stmt->children[1]);
+        stmt = stmt->children[0];
+    }
+
+    int counter = 0;
+    for(int i=statementList.size()-1; i>=0; i--)
+        counter += statement_varcount(statementList[i]);
+    return counter;
+}
+
+int statement_varcount(Node* node) {
+    if(node->children[0]->label == "var_declaration")
+        return var_declaration_varcount(node->children[0]);
+    if(node->children[0]->label == "compound_statement")
+        return compound_statement_varcount(node->children[0]);
+
+    // IF LPAREN expression RPAREN statement
+    if(node->children[0]->label == "IF" && node->children.size() == 5) 
+        return statement_varcount(node->children[4]);
+
+    // IF LPAREN expression RPAREN statement ELSE statement
+    if(node->children[0]->label == "IF") 
+        return statement_varcount(node->children[4]) + statement_varcount(node->children[6]);
+
+    // WHILE LPAREN expression RPAREN statement
+    if(node->children[0]->label == "WHILE") 
+        return statement_varcount(node->children[4]);
+
+    // FOR LPAREN expression_statement expression_statement expression RPAREN statement
+    if(node->children[0]->label == "FOR") 
+        return statement_varcount(node->children[6]);
+    
+    return 0;
+}
+
+int var_declaration_varcount(Node* node) {
+    Node* decl = node->children[1]; // declaration_list
+    int counter = 0;
+    while(decl->label == "declaration_list") {
+        if(decl->children.size() == 1) { // ID
+            counter += 2;
+        }
+        else if(decl->children.size() == 4) { // ID LTHIRD CONST_INT RTHIRD
+            counter += 2 * stoi(decl->children[2]->lexeme);
+        }
+        else if(decl->children.size() == 3) { // declaration_list COMMA ID
+            counter += 2;
+        }
+        else { // declaration_list COMMA ID LTHIRD CONST_INT RTHIRD
+            counter += 2 * stoi(decl->children[4]->lexeme);
+        }
+        decl = decl->children[0];
+    }
+    return counter;   
 }
 
 void start() {
@@ -98,20 +178,27 @@ void start() {
         tempcode << "\tPUSH BP" << ENDL;
         tempcode << "\tMOV BP , SP" << ENDL;
 
+        int varCount = compound_statement_varcount(currFunc->children[currFunc->children.size()-1]);
+        tempcode << "\tSUB SP , " << varCount << ENDL;
+
         return_label = get_label();
         currStack = 0;
-        compound_statement(currFunc->children[currFunc->children.size()-1]);
+        if(info->func != nullptr)
+            compound_statement(currFunc->children[currFunc->children.size()-1], info->func->params);
+        else
+            compound_statement(currFunc->children[currFunc->children.size()-1]);
 
         tempcode << return_label << ":" << ENDL;
+        tempcode << "\tADD SP , " << varCount << ENDL;
+        tempcode << "\tPOP BP" << ENDL;
         if(info->name == "main") {
             tempcode << "\tMOV AH , 4CH" << ENDL;
             tempcode << "\tINT 21H" << ENDL;
         }
         else {
-            tempcode << "\tADD SP , " << -currStack << ENDL;
-            tempcode << "\tPOP BP" << ENDL;
-            // TODO: RET 2*(NUMBER OF PARAMS)
-            tempcode << "\tRET" << ENDL;
+            tempcode << "\tRET";
+            if(info->func != nullptr) tempcode << " " << 2 * info->func->params.size();
+            tempcode << ENDL;
         }
         tempcode << info->name << " ENDP" << ENDL;
     }
@@ -121,6 +208,23 @@ void start() {
 void compound_statement(Node* node) {
     if(node->children.size() == 2) return; // LCURL RCURL
     table.enter_scope();
+    tempcode << "\n\t; Compund statement starting at line " << node->startLine << ENDL;
+    statements(node->children[1]);
+    tempcode << "\t; Compund statement ending at line " << node->endLine << ENDL;
+    table.exit_scope();
+}
+
+void compound_statement(Node* node, vector<SymbolInfo> paramList) {
+    if(node->children.size() == 2) return;
+    table.enter_scope();
+
+    int stackPos = 4;
+    for(int i=0; i<paramList.size(); i++) {
+        paramList[i].stackOffset = stackPos;
+        stackPos += 2;
+        table.insert(&paramList[i]);
+    }
+
     tempcode << "\n\t; Compund statement starting at line " << node->startLine << ENDL;
     statements(node->children[1]);
     tempcode << "\t; Compund statement ending at line " << node->endLine << ENDL;
@@ -285,7 +389,7 @@ void var_declaration(Node* node) {
         else currStack -= 2 * varList[i]->arrSize;
         varList[i]->stackOffset = currStack;
         table.insert(varList[i]);
-        tempcode << "\tSUB SP , " << 2*varList[i]->arrSize << ENDL;
+        // tempcode << "\tSUB SP , " << 2*varList[i]->arrSize << ENDL;
     }
 }
 
@@ -568,8 +672,19 @@ void factor(Node* node) {
     }
 
     if(label == "ID") {
+        argument_list(node->children[2]);
         tempcode << "\tCALL " << node->children[0]->lexeme << ENDL;
         tempcode << "\tPUSH AX" << ENDL; // Return value was stored in AX
+    }
+}
+
+void argument_list(Node* node) {
+    if(node->children.size() == 0) return;
+    Node* arguments = node->children[0];
+    while(arguments->label == "arguments") {
+        if(arguments->children.size() == 1) logic_expression(arguments->children[0]);
+        else logic_expression(arguments->children[2]);
+        arguments = arguments->children[0];
     }
 }
 

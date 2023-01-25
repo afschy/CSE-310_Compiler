@@ -1409,8 +1409,8 @@ int main(int argc,char *argv[])
 	logout= fopen("log.txt","w");
 	errout = fopen("error.txt", "w");
 	parseout = fopen("parsetree.txt", "w");
-	tempcode.open("tempcode.asm", std::ofstream::out);
-	code.open("code.asm", std::ofstream::out);
+	tempcode.open("code.asm", std::ofstream::out);
+	code.open("optimized_code.asm", std::ofstream::out);
 
 	yyin=fin;
 	yyparse();
