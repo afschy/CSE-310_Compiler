@@ -337,12 +337,18 @@ void statement(Node* node) {
     }
 
     // RETURN expression SEMICOLON
-    if(node->children[0]->label == "RETURN") {
+    if(node->children[0]->label == "RETURN" && node->children.size() == 3) {
         tempcode << "\t; Return statement at line " << node->startLine << ENDL;
         expression(node->children[1]);
         tempcode << "\tPOP AX" << ENDL;
         tempcode << "\tJMP " << return_label << ENDL;
         return;
+    }
+
+    // RETURN SEMICOLON
+    if(node->children[0]->label == "RETURN") {
+        tempcode << "\t; Return statement at line " << node->startLine << ENDL;
+        tempcode << "\tJMP " << return_label << ENDL;
     }
 }
 

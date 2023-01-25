@@ -933,6 +933,19 @@ statement : var_declaration {
 				error_count++;
 			}
 		}
+		| RETURN SEMICOLON {
+			log_print("statement: RETURN SEMICOLON");
+			$$ = new Node(false, "statement");
+			$$->children.push_back(new Node(true, "RETURN", "return", $1));
+			$$->children.push_back(new Node(true, "SEMICOLON", ";", $2));
+			$$->update_line();
+
+			if(returnType != "VOID") {
+				fprintf(errout, "Line# %d: Returning void from non-void function\n", $1);
+				fprintf(logout, "Line# %d: Returning void from non-void function\n", $1);
+				error_count++;
+			}
+		}
 		| RETURN expression error { // Semicolon missing after return statement
 			log_print("statement: RETURN expression error");
 			$$ = new Node(false, "statement");
