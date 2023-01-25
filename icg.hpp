@@ -15,7 +15,6 @@ using std::vector, std::string, std::isnan, std::to_string;
 
 typedef void (*fptr_expr_void)(Node* node);
 
-extern std::ofstream tempcode;
 extern std::ofstream code;
 
 // Used in return statements to jump to the label before RET
@@ -148,18 +147,18 @@ int var_declaration_varcount(Node* node) {
 }
 
 void start() {
-    tempcode << ".MODEL SMALL" << ENDL;
-    tempcode << ".STACK 100H" << ENDL;
-    tempcode << ".DATA" << ENDL;
+    code << ".MODEL SMALL" << ENDL;
+    code << ".STACK 100H" << ENDL;
+    code << ".DATA" << ENDL;
     for(int i=0; i<globalVarList.size(); i++) {
         if(globalVarList[i]->isArray)
-            tempcode << "\t" << globalVarList[i]->name << " DW " << globalVarList[i]->arrSize << " DUP (0000H)" << "\n";
+            code << "\t" << globalVarList[i]->name << " DW " << globalVarList[i]->arrSize << " DUP (0000H)" << "\n";
         else
-            tempcode << "\t" << globalVarList[i]->name << " DW 0" << "\n";
+            code << "\t" << globalVarList[i]->name << " DW 0" << "\n";
         delete globalVarList[i];
     }
     globalVarList.clear();
-    tempcode << ".CODE" << ENDL;
+    code << ".CODE" << ENDL;
     // init_main();
 
     Node* currFunc;
@@ -168,18 +167,18 @@ void start() {
         if(unitList[i]->label != "func_definition") continue;
         currFunc = unitList[i];
         info = table.lookup(currFunc->children[1]->lexeme);
-        tempcode << "\n" << info->name << " PROC" << ENDL;
+        code << "\n" << info->name << " PROC" << ENDL;
 
         if(info->name == "main") {
-            tempcode << "\tMOV AX , @DATA" << ENDL;
-            tempcode << "\tMOV DS , AX" << ENDL;
+            code << "\tMOV AX , @DATA" << ENDL;
+            code << "\tMOV DS , AX" << ENDL;
         }
 
-        tempcode << "\tPUSH BP" << ENDL;
-        tempcode << "\tMOV BP , SP" << ENDL;
+        code << "\tPUSH BP" << ENDL;
+        code << "\tMOV BP , SP" << ENDL;
 
         int varCount = compound_statement_varcount(currFunc->children[currFunc->children.size()-1]);
-        tempcode << "\tSUB SP , " << varCount << ENDL;
+        code << "\tSUB SP , " << varCount << ENDL;
 
         return_label = get_label();
         currStack = 0;
@@ -188,29 +187,29 @@ void start() {
         else
             compound_statement(currFunc->children[currFunc->children.size()-1]);
 
-        tempcode << return_label << ":" << ENDL;
-        tempcode << "\tADD SP , " << varCount << ENDL;
-        tempcode << "\tPOP BP" << ENDL;
+        code << return_label << ":" << ENDL;
+        code << "\tADD SP , " << varCount << ENDL;
+        code << "\tPOP BP" << ENDL;
         if(info->name == "main") {
-            tempcode << "\tMOV AH , 4CH" << ENDL;
-            tempcode << "\tINT 21H" << ENDL;
+            code << "\tMOV AH , 4CH" << ENDL;
+            code << "\tINT 21H" << ENDL;
         }
         else {
-            tempcode << "\tRET";
-            if(info->func != nullptr) tempcode << " " << 2 * info->func->params.size();
-            tempcode << ENDL;
+            code << "\tRET";
+            if(info->func != nullptr) code << " " << 2 * info->func->params.size();
+            code << ENDL;
         }
-        tempcode << info->name << " ENDP" << ENDL;
+        code << info->name << " ENDP" << ENDL;
     }
-    tempcode << "\nEND MAIN" << ENDL;
+    code << "\nEND MAIN" << ENDL;
 }
 
 void compound_statement(Node* node) {
     if(node->children.size() == 2) return; // LCURL RCURL
     table.enter_scope();
-    tempcode << "\n\t; Compund statement starting at line " << node->startLine << ENDL;
+    code << "\n\t; Compund statement starting at line " << node->startLine << ENDL;
     statements(node->children[1]);
-    tempcode << "\t; Compund statement ending at line " << node->endLine << ENDL;
+    code << "\t; Compund statement ending at line " << node->endLine << ENDL;
     table.exit_scope();
 }
 
@@ -225,9 +224,9 @@ void compound_statement(Node* node, vector<SymbolInfo> paramList) {
         table.insert(&paramList[i]);
     }
 
-    tempcode << "\n\t; Compund statement starting at line " << node->startLine << ENDL;
+    code << "\n\t; Compund statement starting at line " << node->startLine << ENDL;
     statements(node->children[1]);
-    tempcode << "\t; Compund statement ending at line " << node->endLine << ENDL;
+    code << "\t; Compund statement ending at line " << node->endLine << ENDL;
     table.exit_scope();
 }
 
@@ -260,38 +259,38 @@ void statement(Node* node) {
     
     // IF LPAREN expression RPAREN statement
     if(node->children[0]->label == "IF" && node->children.size() == 5) {
-        tempcode << "\n\t; if statement starting at line " << node->startLine << ENDL;
+        code << "\n\t; if statement starting at line " << node->startLine << ENDL;
         expression(node->children[2]);
 
         string next_label = get_label(), end_label = get_label();
-        tempcode << "\tPOP AX" << ENDL;
-        tempcode << "\tCMP AX , 0" << ENDL;
-        tempcode << "\tJNE " << next_label << ENDL;
-        tempcode << "\tJMP " << end_label << ENDL;
-        tempcode << next_label << ":" << ENDL;
+        code << "\tPOP AX" << ENDL;
+        code << "\tCMP AX , 0" << ENDL;
+        code << "\tJNE " << next_label << ENDL;
+        code << "\tJMP " << end_label << ENDL;
+        code << next_label << ":" << ENDL;
         statement(node->children[4]);
-        tempcode << end_label << ":" << ENDL;
-        tempcode << "\t; if statement ending at line " << node->endLine << ENDL;
+        code << end_label << ":" << ENDL;
+        code << "\t; if statement ending at line " << node->endLine << ENDL;
         return;
     }
 
     // IF LPAREN expression RPAREN statement ELSE statement
     if(node->children[0]->label == "IF") {
-        tempcode << "\n\t; if-else statement starting at line " << node->startLine << ENDL;
+        code << "\n\t; if-else statement starting at line " << node->startLine << ENDL;
         expression(node->children[2]);
 
         string if_label = get_label(), else_label = get_label(), end_label = get_label();
-        tempcode << "\tPOP AX" << ENDL;
-        tempcode << "\tCMP AX , 0" << ENDL;
-        tempcode << "\tJNE " << if_label << ENDL;
-        tempcode << "\tJMP " << else_label << ENDL;
-        tempcode << if_label << ":" << ENDL;
+        code << "\tPOP AX" << ENDL;
+        code << "\tCMP AX , 0" << ENDL;
+        code << "\tJNE " << if_label << ENDL;
+        code << "\tJMP " << else_label << ENDL;
+        code << if_label << ":" << ENDL;
         statement(node->children[4]);
-        tempcode << "\tJMP " << end_label << ENDL;
-        tempcode << else_label << ":" << ENDL;
+        code << "\tJMP " << end_label << ENDL;
+        code << else_label << ":" << ENDL;
         statement(node->children[6]);
-        tempcode << end_label << ":" << ENDL;
-        tempcode << "\t; if-else statement ending at line " << node->endLine << ENDL;
+        code << end_label << ":" << ENDL;
+        code << "\t; if-else statement ending at line " << node->endLine << ENDL;
         return;
     }
 
@@ -299,56 +298,56 @@ void statement(Node* node) {
     if(node->children[0]->label == "WHILE") {
         string start_label = get_label(), body_label = get_label(), end_label = get_label();
         
-        tempcode << start_label << ":\t; while loop starting at line " << node->startLine << ENDL;
+        code << start_label << ":\t; while loop starting at line " << node->startLine << ENDL;
         expression(node->children[2]);
-        tempcode << "\tPOP AX" << ENDL;
-        tempcode << "\tCMP AX , 0" << ENDL;
-        tempcode << "\tJNE " << body_label << ENDL;
-        tempcode << "\tJMP " << end_label << ENDL;
+        code << "\tPOP AX" << ENDL;
+        code << "\tCMP AX , 0" << ENDL;
+        code << "\tJNE " << body_label << ENDL;
+        code << "\tJMP " << end_label << ENDL;
 
-        tempcode << body_label << ":" << ENDL;
+        code << body_label << ":" << ENDL;
         statement(node->children[4]);
-        tempcode << "\tJMP " << start_label << ENDL;
+        code << "\tJMP " << start_label << ENDL;
 
-        tempcode << end_label << ":\t; while loop ending at line " << node->endLine << ENDL;
+        code << end_label << ":\t; while loop ending at line " << node->endLine << ENDL;
         return;
     }
 
     // FOR LPAREN expression_statement expression_statement expression RPAREN statement
     if(node->children[0]->label == "FOR") {
-        tempcode << "\n\t; for loop starting at line " << node->startLine;
+        code << "\n\t; for loop starting at line " << node->startLine;
         expression_statement(node->children[2]);
         string start_label = get_label(), body_label = get_label(), end_label = get_label();
 
-        tempcode << start_label << ":" << ENDL;
+        code << start_label << ":" << ENDL;
         expression_statement(node->children[3]);
-        tempcode << "\tCMP AX , 0" << ENDL;
-        tempcode << "\tJNE " << body_label << ENDL;
-        tempcode << "\tJMP " << end_label << ENDL;
+        code << "\tCMP AX , 0" << ENDL;
+        code << "\tJNE " << body_label << ENDL;
+        code << "\tJMP " << end_label << ENDL;
 
-        tempcode << body_label << ":" << ENDL;
+        code << body_label << ":" << ENDL;
         statement(node->children[6]);
         expression(node->children[4]);
-        tempcode << "\tPOP AX" << ENDL;
-        tempcode << "\tJMP " << start_label << ENDL;
+        code << "\tPOP AX" << ENDL;
+        code << "\tJMP " << start_label << ENDL;
 
-        tempcode << end_label << ":\t; for loop ending at line " << node->endLine << ENDL;
+        code << end_label << ":\t; for loop ending at line " << node->endLine << ENDL;
         return;
     }
 
     // RETURN expression SEMICOLON
     if(node->children[0]->label == "RETURN" && node->children.size() == 3) {
-        tempcode << "\t; Return statement at line " << node->startLine << ENDL;
+        code << "\t; Return statement at line " << node->startLine << ENDL;
         expression(node->children[1]);
-        tempcode << "\tPOP AX" << ENDL;
-        tempcode << "\tJMP " << return_label << ENDL;
+        code << "\tPOP AX" << ENDL;
+        code << "\tJMP " << return_label << ENDL;
         return;
     }
 
     // RETURN SEMICOLON
     if(node->children[0]->label == "RETURN") {
-        tempcode << "\t; Return statement at line " << node->startLine << ENDL;
-        tempcode << "\tJMP " << return_label << ENDL;
+        code << "\t; Return statement at line " << node->startLine << ENDL;
+        code << "\tJMP " << return_label << ENDL;
     }
 }
 
@@ -395,48 +394,54 @@ void var_declaration(Node* node) {
         else currStack -= 2 * varList[i]->arrSize;
         varList[i]->stackOffset = currStack;
         table.insert(varList[i]);
-        // tempcode << "\tSUB SP , " << 2*varList[i]->arrSize << ENDL;
+        // code << "\tSUB SP , " << 2*varList[i]->arrSize << ENDL;
     }
 }
 
 void expression_statement(Node* node) { 
     if(node->children.size() == 1) return;
-    tempcode << "\n\t; Expression statement starting at line " << node->startLine << ENDL;
+    code << "\n\t; Expression statement starting at line " << node->startLine << ENDL;
     expression(node->children[0]);
-    tempcode << "\tPOP AX" << ENDL;
-    tempcode << "\t; Expression statement ending at line " << node->endLine << ENDL;
+    code << "\tPOP AX" << ENDL;
+    code << "\t; Expression statement ending at line " << node->endLine << ENDL;
 }
 
 void variable(Node* node) {
     SymbolInfo* info = table.lookup(node->children[0]->lexeme);
 
     if(node->children.size() == 1 && info->id == 1) { // global non-array variable
-        tempcode << "\tPUSH " << info->name << ENDL;
+        code << "\tPUSH " << info->name << ENDL;
         return;
     }
 
     if(node->children.size() == 1) { // local non-array variable
-        tempcode << "\tPUSH BP[" << info->stackOffset << "]" << ENDL;
+        code << "\tPUSH BP[" << info->stackOffset << "]" << ENDL;
         return;
     }
 
     if(info->id == 1) { // global array
         expression(node->children[2]);
-        tempcode << "\tPOP SI" << ENDL;
-        tempcode << "\tSHL SI , 1" << ENDL;
-        tempcode << "\tPUSH " << info->name << "[SI]" << ENDL;
+        code << "\tPOP SI" << ENDL;
+        code << "\tSHL SI , 1" << ENDL;
+        code << "\tPUSH " << info->name << "[SI]" << ENDL;
         return;
     }
 
     // local array
     expression(node->children[2]);
-    tempcode << "\tPOP SI" << ENDL;
-    tempcode << "\tSHL SI , 1" << ENDL;
-    tempcode << "\tADD SI , " << info->stackOffset << ENDL;
-    tempcode << "\tPUSH BP[SI]" << ENDL;
+    code << "\tPOP SI" << ENDL;
+    code << "\tSHL SI , 1" << ENDL;
+    code << "\tADD SI , " << info->stackOffset << ENDL;
+    code << "\tPUSH BP[SI]" << ENDL;
 }
 
 void expression(Node* node) {
+    if(!isnan(node->eval)) {
+        code << "\tMOV AX , " << int(node->eval) << ENDL;
+        code << "\tPUSH AX" << ENDL;
+        return;
+    }
+    
     if(node->children.size() == 1) {
         Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
@@ -450,40 +455,46 @@ void expression(Node* node) {
     SymbolInfo* info = table.lookup(variable->children[0]->lexeme);
     
     if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
-        tempcode << "\tPOP AX" << ENDL;
-        tempcode << "\tMOV " << info->name << " , AX" << ENDL;
-        tempcode << "\tPUSH AX" << ENDL;
+        code << "\tPOP AX" << ENDL;
+        code << "\tMOV " << info->name << " , AX" << ENDL;
+        code << "\tPUSH AX" << ENDL;
         return;
     }
 
     if(variable->children.size() == 1) { // local non-array variable
-        tempcode << "\tPOP AX" << ENDL;
-        tempcode << "\tMOV BP[" << info->stackOffset << "] , AX" << ENDL;
-        tempcode << "\tPUSH AX" << ENDL;
+        code << "\tPOP AX" << ENDL;
+        code << "\tMOV BP[" << info->stackOffset << "] , AX" << ENDL;
+        code << "\tPUSH AX" << ENDL;
         return;
     }
 
     if(info->id == 1) { // global array
-        tempcode << "\tPOP BX" << ENDL;
+        code << "\tPOP BX" << ENDL;
         expression(variable->children[2]);
-        tempcode << "\tPOP SI" << ENDL;
-        tempcode << "\tSHL SI , 1" << ENDL;
-        tempcode << "\tMOV " << info->name << "[SI] , BX" << ENDL;
-        tempcode << "\tPUSH BX" << ENDL;
+        code << "\tPOP SI" << ENDL;
+        code << "\tSHL SI , 1" << ENDL;
+        code << "\tMOV " << info->name << "[SI] , BX" << ENDL;
+        code << "\tPUSH BX" << ENDL;
         return;
     }
 
     // local array
-    tempcode << "\tPOP BX" << ENDL;
+    code << "\tPOP BX" << ENDL;
     expression(variable->children[2]);
-    tempcode << "\tPOP SI" << ENDL;
-    tempcode << "\tSHL SI , 1" << ENDL;
-    tempcode << "\tADD SI , " << info->stackOffset << ENDL;
-    tempcode << "\tMOV BP[SI] , BX" << ENDL;
-    tempcode << "\tPUSH BX" << ENDL;
+    code << "\tPOP SI" << ENDL;
+    code << "\tSHL SI , 1" << ENDL;
+    code << "\tADD SI , " << info->stackOffset << ENDL;
+    code << "\tMOV BP[SI] , BX" << ENDL;
+    code << "\tPUSH BX" << ENDL;
 }
 
 void logic_expression(Node* node) {
+    if(!isnan(node->eval)) {
+        code << "\tMOV AX , " << int(node->eval) << ENDL;
+        code << "\tPUSH AX" << ENDL;
+        return;
+    }
+    
     if(node->children.size() == 1) {
         Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
@@ -493,34 +504,40 @@ void logic_expression(Node* node) {
 
     rel_expression(node->children[0]);
     rel_expression(node->children[2]);
-    tempcode << "\tPOP AX" << ENDL;
-    tempcode << "\tPOP CX" << ENDL;
+    code << "\tPOP AX" << ENDL;
+    code << "\tPOP CX" << ENDL;
     string zero_label = get_label(), end_label = get_label(); 
 
     if(node->children[1]->lexeme == "||") {
-        tempcode << "\tOR AX , CX" << ENDL;
-        tempcode << "\tCMP AX , 0" << ENDL;
-        tempcode << "\tJE " << zero_label << ENDL;
-        tempcode << "\tPUSH 1" << ENDL;
-        tempcode << "\tJMP " << end_label << ENDL;
-        tempcode << zero_label << ":" << ENDL;
-        tempcode << "\tPUSH 0" << ENDL;
-        tempcode << end_label << ":" << ENDL;
+        code << "\tOR AX , CX" << ENDL;
+        code << "\tCMP AX , 0" << ENDL;
+        code << "\tJE " << zero_label << ENDL;
+        code << "\tPUSH 1" << ENDL;
+        code << "\tJMP " << end_label << ENDL;
+        code << zero_label << ":" << ENDL;
+        code << "\tPUSH 0" << ENDL;
+        code << end_label << ":" << ENDL;
         return;
     }
 
-    tempcode << "\tCMP AX , 0" << ENDL;
-    tempcode << "\tJE " << zero_label << ENDL;
-    tempcode << "\tCMP CX , 0" << ENDL;
-    tempcode << "\tJE " << zero_label << ENDL;
-    tempcode << "\tPUSH 1" << ENDL;
-    tempcode << "\tJMP " << end_label << ENDL;
-    tempcode << zero_label << ":" << ENDL;
-    tempcode << "\tPUSH 0" << ENDL;
-    tempcode << end_label << ":" << ENDL;
+    code << "\tCMP AX , 0" << ENDL;
+    code << "\tJE " << zero_label << ENDL;
+    code << "\tCMP CX , 0" << ENDL;
+    code << "\tJE " << zero_label << ENDL;
+    code << "\tPUSH 1" << ENDL;
+    code << "\tJMP " << end_label << ENDL;
+    code << zero_label << ":" << ENDL;
+    code << "\tPUSH 0" << ENDL;
+    code << end_label << ":" << ENDL;
 }
 
 void rel_expression(Node* node) {
+    if(!isnan(node->eval)) {
+        code << "\tMOV AX , " << int(node->eval) << ENDL;
+        code << "\tPUSH AX" << ENDL;
+        return;
+    }
+    
     if(node->children.size() == 1) {
         Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
@@ -530,28 +547,34 @@ void rel_expression(Node* node) {
 
     simple_expression(node->children[0]);
     simple_expression(node->children[2]);
-    tempcode << "\tPOP CX" << ENDL;
-    tempcode << "\tPOP AX" << ENDL;
+    code << "\tPOP CX" << ENDL;
+    code << "\tPOP AX" << ENDL;
     string one_label = get_label(), end_label = get_label();
     string op = node->children[1]->lexeme;
 
-    tempcode << "\tCMP AX , CX" << ENDL;
+    code << "\tCMP AX , CX" << ENDL;
 
-    if(op == "<") tempcode << "\tJL " << one_label << ENDL;
-    if(op == "<=") tempcode << "\tJLE " << one_label << ENDL;
-    if(op == ">") tempcode << "\tJG " << one_label << ENDL;
-    if(op == ">=") tempcode << "\tJGE " << one_label << ENDL;
-    if(op == "==") tempcode << "\tJE " << one_label << ENDL;
-    if(op == "!=") tempcode << "\tJNE " << one_label << ENDL;
+    if(op == "<") code << "\tJL " << one_label << ENDL;
+    if(op == "<=") code << "\tJLE " << one_label << ENDL;
+    if(op == ">") code << "\tJG " << one_label << ENDL;
+    if(op == ">=") code << "\tJGE " << one_label << ENDL;
+    if(op == "==") code << "\tJE " << one_label << ENDL;
+    if(op == "!=") code << "\tJNE " << one_label << ENDL;
 
-    tempcode << "\tPUSH 0" << ENDL;
-    tempcode << "\tJMP " << end_label << ENDL;
-    tempcode << one_label << ":" << ENDL;
-    tempcode << "\tPUSH 1" << ENDL;
-    tempcode << end_label << ":" << ENDL;
+    code << "\tPUSH 0" << ENDL;
+    code << "\tJMP " << end_label << ENDL;
+    code << one_label << ":" << ENDL;
+    code << "\tPUSH 1" << ENDL;
+    code << end_label << ":" << ENDL;
 }
 
 void simple_expression(Node* node) {
+    if(!isnan(node->eval)) {
+        code << "\tMOV AX , " << int(node->eval) << ENDL;
+        code << "\tPUSH AX" << ENDL;
+        return;
+    }
+    
     if(node->children.size() == 1) {
         Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
@@ -561,19 +584,25 @@ void simple_expression(Node* node) {
 
     simple_expression(node->children[0]);
     term(node->children[2]);
-    tempcode << "\tPOP CX" << ENDL;
-    tempcode << "\tPOP AX" << ENDL;
+    code << "\tPOP CX" << ENDL;
+    code << "\tPOP AX" << ENDL;
     
     if(node->children[1]->lexeme == "+") {
-        tempcode << "\tADD AX , CX" << ENDL;
+        code << "\tADD AX , CX" << ENDL;
     }
     else {
-        tempcode << "\tSUB AX , CX" << ENDL;
+        code << "\tSUB AX , CX" << ENDL;
     }
-    tempcode << "\tPUSH AX" << ENDL;
+    code << "\tPUSH AX" << ENDL;
 }
 
 void term(Node* node) {
+    if(!isnan(node->eval)) {
+        code << "\tMOV AX , " << int(node->eval) << ENDL;
+        code << "\tPUSH AX" << ENDL;
+        return;
+    }
+    
     if(node->children.size() == 1) {
         Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
@@ -583,26 +612,32 @@ void term(Node* node) {
 
     term(node->children[0]);
     unary_expression(node->children[2]);
-    tempcode << "\tPOP CX" << ENDL;
-    tempcode << "\tPOP AX" << ENDL;
+    code << "\tPOP CX" << ENDL;
+    code << "\tPOP AX" << ENDL;
     
     if(node->children[1]->lexeme == "*") {
-        tempcode << "\tIMUL CX" << ENDL;
-        tempcode << "\tPUSH AX" << ENDL;
+        code << "\tIMUL CX" << ENDL;
+        code << "\tPUSH AX" << ENDL;
     }
     else if(node->children[1]->lexeme == "/") {
-        tempcode << "\tCWD" << ENDL;
-        tempcode << "\tIDIV CX" << ENDL;
-        tempcode << "\tPUSH AX" << ENDL;
+        code << "\tCWD" << ENDL;
+        code << "\tIDIV CX" << ENDL;
+        code << "\tPUSH AX" << ENDL;
     }
     else {
-        tempcode << "\tCWD" << ENDL;
-        tempcode << "\tIDIV CX" << ENDL;
-        tempcode << "\tPUSH DX" << ENDL;
+        code << "\tCWD" << ENDL;
+        code << "\tIDIV CX" << ENDL;
+        code << "\tPUSH DX" << ENDL;
     }
 }
 
 void unary_expression(Node* node) {
+    if(!isnan(node->eval)) {
+        code << "\tMOV AX , " << int(node->eval) << ENDL;
+        code << "\tPUSH AX" << ENDL;
+        return;
+    }
+
     if(node->children.size() == 1) 
         return factor(node->children[0]);
 
@@ -610,28 +645,28 @@ void unary_expression(Node* node) {
     string op = node->children[0]->lexeme;
     if(op == "+") return;
     if(op == "-") {
-        tempcode << "\tPOP AX" << ENDL;
-        tempcode << "\tNEG AX" << ENDL;
-        tempcode << "\tPUSH AX" << ENDL;
+        code << "\tPOP AX" << ENDL;
+        code << "\tNEG AX" << ENDL;
+        code << "\tPUSH AX" << ENDL;
         return;
     }
     // op == "!"
     string one_label = get_label(), end_label = get_label();
-    tempcode << "\tPOP AX" << ENDL;
-    tempcode << "\tCMP AX , 0" << ENDL;
-    tempcode << "\tJE " << one_label << ENDL;
-    tempcode << "\tPUSH 0" << ENDL;
-    tempcode << "\tJMP " << end_label << ENDL;
-    tempcode << one_label << ":" << ENDL;
-    tempcode << "\tPUSH 1" << ENDL;
-    tempcode << end_label << ":" << ENDL;
+    code << "\tPOP AX" << ENDL;
+    code << "\tCMP AX , 0" << ENDL;
+    code << "\tJE " << one_label << ENDL;
+    code << "\tPUSH 0" << ENDL;
+    code << "\tJMP " << end_label << ENDL;
+    code << one_label << ":" << ENDL;
+    code << "\tPUSH 1" << ENDL;
+    code << end_label << ":" << ENDL;
 }
 
 void factor(Node* node) {
     string label = node->children[0]->label;
     if(label == "CONST_INT" || label == "CONST_FLOAT") {
-        tempcode << "\tMOV AX , " << stoi(node->children[0]->lexeme) << ENDL;
-        tempcode << "\tPUSH AX"<< ENDL;
+        code << "\tMOV AX , " << stoi(node->children[0]->lexeme) << ENDL;
+        code << "\tPUSH AX"<< ENDL;
         return;
     }
 
@@ -647,40 +682,40 @@ void factor(Node* node) {
         
         if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
             if(node->children[1]->label == "INCOP") {
-                tempcode << "\tADD " << info->name << " , 1" << ENDL;
+                code << "\tADD " << info->name << " , 1" << ENDL;
             }
-            else tempcode << "\tSUB " << info->name << " , 1" << ENDL;
+            else code << "\tSUB " << info->name << " , 1" << ENDL;
             return;
         }
 
         if(variable->children.size() == 1) { // local non-array variable
             if(node->children[1]->label == "INCOP") {
-                tempcode << "\tADD BP[" << info->stackOffset << "] , 1" << ENDL;
+                code << "\tADD BP[" << info->stackOffset << "] , 1" << ENDL;
             }
-            else tempcode << "\tSUB BP[" << info->stackOffset << "] , 1" << ENDL;
+            else code << "\tSUB BP[" << info->stackOffset << "] , 1" << ENDL;
             return;
         }
 
         if(info->id == 1) { // global array
             if(node->children[1]->label == "INCOP") {
-                tempcode << "\tADD " << info->name << "[SI] , 1" << ENDL;
+                code << "\tADD " << info->name << "[SI] , 1" << ENDL;
             }
-            else tempcode << "\tSUB " << info->name << "[SI] , 1" << ENDL;
+            else code << "\tSUB " << info->name << "[SI] , 1" << ENDL;
             return;
         }
 
         // local array
         if(node->children[1]->label == "INCOP") {
-            tempcode << "\tADD " << "BP[SI] , 1" << ENDL;
+            code << "\tADD " << "BP[SI] , 1" << ENDL;
         }
-        else tempcode << "\tSUB " << "BP[SI] , 1" << ENDL;
+        else code << "\tSUB " << "BP[SI] , 1" << ENDL;
         return;
     }
 
     if(label == "ID") {
         argument_list(node->children[2]);
-        tempcode << "\tCALL " << node->children[0]->lexeme << ENDL;
-        tempcode << "\tPUSH AX" << ENDL; // Return value was stored in AX
+        code << "\tCALL " << node->children[0]->lexeme << ENDL;
+        code << "\tPUSH AX" << ENDL; // Return value was stored in AX
     }
 }
 

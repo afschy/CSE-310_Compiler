@@ -18,7 +18,6 @@ extern FILE *yyin;
 FILE *logout;
 FILE *errout;
 FILE *parseout;
-std::ofstream tempcode;
 std::ofstream code;
 
 // counters
@@ -1422,8 +1421,7 @@ int main(int argc,char *argv[])
 	logout= fopen("log.txt","w");
 	errout = fopen("error.txt", "w");
 	parseout = fopen("parsetree.txt", "w");
-	tempcode.open("code.asm", std::ofstream::out);
-	code.open("optimized_code.asm", std::ofstream::out);
+	code.open("code.asm", std::ofstream::out);
 
 	yyin=fin;
 	yyparse();
@@ -1434,13 +1432,12 @@ int main(int argc,char *argv[])
 	print_tree(parseout, 0, root);
 
 	start();
+	code.close();
 
 	fclose(fin);
 	fclose(logout);
 	fclose(errout);
 	fclose(parseout);
-	tempcode.close();
-	code.close();
 	delete root;
 	
 	return 0;
