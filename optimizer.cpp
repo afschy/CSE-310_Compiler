@@ -108,6 +108,16 @@ void optimize_push_pop(string* inputStrings, vector<string>* tokenList, bool* fl
                 useFlag = true;
                 break;
             }
+
+            if(tokenList[k].size()>=4 && tokenList[k][1]=="WORD" && tokenList[k][3]==pushed) {
+                useFlag = true;
+                break;
+            }
+            if(tokenList[k].size()>=4 && tokenList[k][1]=="WORD" && (pushed.find("[" + tokenList[k][3] + "]") != std::string::npos)) {
+                useFlag = true;
+                break;
+            }
+
             if(pushed=="AX" || pushed=="DX" || (pushed.find("[AX]") != std::string::npos) || (pushed.find("[DX]") != std::string::npos)) {
                 if(tokenList[k].size()>=1 && (tokenList[k][0]=="MUL" || tokenList[k][0]=="IMUL")) {
                     useFlag = true;

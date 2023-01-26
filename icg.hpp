@@ -489,12 +489,6 @@ void variable(const Node* node) {
 }
 
 void expression(const Node* node) {
-    if(!isnan(node->eval)) {
-        code << "\tMOV AX , " << int(node->eval) << ENDL;
-        code << "\tPUSH AX" << ENDL;
-        return;
-    }
-    
     if(node->children.size() == 1) {
         const Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
@@ -542,12 +536,6 @@ void expression(const Node* node) {
 }
 
 void logic_expression(const Node* node) {
-    if(!isnan(node->eval)) {
-        code << "\tMOV AX , " << int(node->eval) << ENDL;
-        code << "\tPUSH AX" << ENDL;
-        return;
-    }
-    
     if(node->children.size() == 1) {
         const Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
@@ -585,12 +573,6 @@ void logic_expression(const Node* node) {
 }
 
 void rel_expression(const Node* node) {
-    if(!isnan(node->eval)) {
-        code << "\tMOV AX , " << int(node->eval) << ENDL;
-        code << "\tPUSH AX" << ENDL;
-        return;
-    }
-    
     if(node->children.size() == 1) {
         const Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
@@ -622,12 +604,6 @@ void rel_expression(const Node* node) {
 }
 
 void simple_expression(const Node* node) {
-    if(!isnan(node->eval)) {
-        code << "\tMOV AX , " << int(node->eval) << ENDL;
-        code << "\tPUSH AX" << ENDL;
-        return;
-    }
-    
     if(node->children.size() == 1) {
         const Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
@@ -650,12 +626,6 @@ void simple_expression(const Node* node) {
 }
 
 void term(const Node* node) {
-    if(!isnan(node->eval)) {
-        code << "\tMOV AX , " << int(node->eval) << ENDL;
-        code << "\tPUSH AX" << ENDL;
-        return;
-    }
-    
     if(node->children.size() == 1) {
         const Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
@@ -685,12 +655,6 @@ void term(const Node* node) {
 }
 
 void unary_expression(const Node* node) {
-    if(!isnan(node->eval)) {
-        code << "\tMOV AX , " << int(node->eval) << ENDL;
-        code << "\tPUSH AX" << ENDL;
-        return;
-    }
-
     if(node->children.size() == 1) 
         return factor(node->children[0]);
 
@@ -735,33 +699,33 @@ void factor(const Node* node) {
         
         if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
             if(node->children[1]->label == "INCOP") {
-                code << "\tADD " << info->name << " , 1" << ENDL;
+                code << "\tADD WORD PTR " << info->name << " , 1" << ENDL;
             }
-            else code << "\tSUB " << info->name << " , 1" << ENDL;
+            else code << "\tSUB WORD PTR " << info->name << " , 1" << ENDL;
             return;
         }
 
         if(variable->children.size() == 1) { // local non-array variable
             if(node->children[1]->label == "INCOP") {
-                code << "\tADD BP[" << info->stackOffset << "] , 1" << ENDL;
+                code << "\tADD WORD PTR BP[" << info->stackOffset << "] , 1" << ENDL;
             }
-            else code << "\tSUB BP[" << info->stackOffset << "] , 1" << ENDL;
+            else code << "\tSUB WORD PTR BP[" << info->stackOffset << "] , 1" << ENDL;
             return;
         }
 
         if(info->id == 1) { // global array
             if(node->children[1]->label == "INCOP") {
-                code << "\tADD " << info->name << "[SI] , 1" << ENDL;
+                code << "\tADD WORD PTR " << info->name << "[SI] , 1" << ENDL;
             }
-            else code << "\tSUB " << info->name << "[SI] , 1" << ENDL;
+            else code << "\tSUB WORD PTR " << info->name << "[SI] , 1" << ENDL;
             return;
         }
 
         // local array
         if(node->children[1]->label == "INCOP") {
-            code << "\tADD " << "BP[SI] , 1" << ENDL;
+            code << "\tADD WORD PTR " << "BP[SI] , 1" << ENDL;
         }
-        else code << "\tSUB " << "BP[SI] , 1" << ENDL;
+        else code << "\tSUB WORD PTR " << "BP[SI] , 1" << ENDL;
         return;
     }
 
