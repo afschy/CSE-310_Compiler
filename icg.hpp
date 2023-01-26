@@ -30,14 +30,13 @@ string get_label() {
     return "L" + to_string(labelCount++);
 }
 
-extern vector<Node*> unitList;
 vector<SymbolInfo*> globalVarList;
 
 // Has only the global variables and functions inserted at start
 extern SymbolTable table;
 
 // Functions corresponding to (almost )each non-terminal
-void start();
+void start(const Node* node);
 
 void compound_statement(const Node* node);
 void compound_statement(const Node* node, vector<SymbolInfo>& paramList);
@@ -145,10 +144,18 @@ int var_declaration_varcount(const Node* node) {
     return counter;   
 }
 
-void start() {
+void start(const Node* node) {
     code << ".MODEL SMALL" << ENDL;
     code << ".STACK 100H" << ENDL;
     code << ".DATA" << ENDL;
+
+    const Node* program = node->children[0];
+    vector<Node*> unitList;
+    while(program->label == "program") {
+        if(program->children.size() == 2) unitList.push_back(program->children[1]->children[0]);
+        else unitList.push_back(program->children[0]->children[0]);
+        program = program->children[0];
+    }
 
     for(int i=0; i<unitList.size(); i++) {
         if(unitList[i]->label != "var_declaration") continue;
@@ -168,7 +175,7 @@ void start() {
 
     Node* currFunc;
     SymbolInfo* info;
-    for(int i=0; i<unitList.size(); i++) {
+    for(int i=unitList.size()-1; i>=0; i--) {
         if(unitList[i]->label != "func_definition") continue;
         currFunc = unitList[i];
         info = table.lookup(currFunc->children[1]->lexeme);

@@ -32,7 +32,7 @@ string currType;
 vector<SymbolInfo*> currVars;
 vector<SymbolInfo*> currParams;
 vector<string> argList;
-vector<Node*> unitList;
+// vector<Node*> unitList;
 
 // function helpers
 bool inFunction = false;
@@ -240,21 +240,21 @@ unit : var_declaration{
 		$$ = new Node(false, "unit");
 		$$->children.push_back($1);
 		$$->update_line();
-		unitList.push_back($1);
+		// unitList.push_back($1);
 	}
     | func_declaration{
 		log_print("unit : func_declaration");
 		$$ = new Node(false, "unit");
 		$$->children.push_back($1);
 		$$->update_line();
-		unitList.push_back($1);
+		// unitList.push_back($1);
 	}
     | func_definition{
 		log_print("unit : func_definition");
 		$$ = new Node(false, "unit");
 		$$->children.push_back($1);
 		$$->update_line();
-		unitList.push_back($1);
+		// unitList.push_back($1);
 	}
 	| error {
 		log_print("unit : error");
@@ -1425,7 +1425,7 @@ int main(int argc,char *argv[])
 	fprintf(logout, "Total Errors: %d\n", error_count);
 	print_tree(parseout, 0, root);
 
-	start();
+	start(root);
 	code.close();
 	run_optimizer(8, 32);
 
