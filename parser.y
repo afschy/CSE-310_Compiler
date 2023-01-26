@@ -8,6 +8,7 @@
 #include "node.hpp"
 #include "merged.hpp"
 #include "icg.hpp"
+#include "optimizer.cpp"
 using std::vector, std::string, std::isnan, std::toupper;
 
 int yyparse(void);
@@ -1433,6 +1434,7 @@ int main(int argc,char *argv[])
 
 	start();
 	code.close();
+	run_optimizer(8, 32);
 
 	fclose(fin);
 	fclose(logout);

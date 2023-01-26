@@ -13,7 +13,7 @@
 using std::vector, std::string, std::isnan, std::to_string;
 #define ENDL "\n";
 
-typedef void (*fptr_expr_void)(Node* node);
+typedef void (*fptr_expr_void)(const Node* node);
 
 extern std::ofstream code;
 
@@ -40,22 +40,22 @@ extern SymbolTable table;
 // Functions corresponding to (almost )each non-terminal
 void start();
 
-void compound_statement(Node* node);
-void compound_statement(Node* node, vector<SymbolInfo>& paramList);
-void statements(Node* node);
-void statement(Node* node);
-void var_declaration(Node* node);
-void expression_statement(Node* node);
+void compound_statement(const Node* node);
+void compound_statement(const Node* node, vector<SymbolInfo>& paramList);
+void statements(const Node* node);
+void statement(const Node* node);
+void var_declaration(const Node* node);
+void expression_statement(const Node* node);
 
-void variable(Node* node);
-void expression(Node* node);
-void logic_expression(Node* node);
-void rel_expression(Node* node);
-void simple_expression(Node* node);
-void term(Node* node);
-void unary_expression(Node* node);
-void factor(Node* node);
-void argument_list(Node* node);
+void variable(const Node* node);
+void expression(const Node* node);
+void logic_expression(const Node* node);
+void rel_expression(const Node* node);
+void simple_expression(const Node* node);
+void term(const Node* node);
+void unary_expression(const Node* node);
+void factor(const Node* node);
+void argument_list(const Node* node);
 
 fptr_expr_void get_expr_void_funct(string label) {
     if(label == "expression_statement") return expression_statement;
@@ -69,24 +69,24 @@ fptr_expr_void get_expr_void_funct(string label) {
 }
 
 // To know the amount of stack space to set aside for local variables
-int compound_statement_varcount(Node* node);
-int statements_varcount(Node* node);
-int statement_varcount(Node* node);
-int var_declaration_varcount(Node* node);
+int compound_statement_varcount(const Node* node);
+int statements_varcount(const Node* node);
+int statement_varcount(const Node* node);
+int var_declaration_varcount(const Node* node);
 
-int compound_statement_varcount(Node* node) {
+int compound_statement_varcount(const Node* node) {
     if(node->children.size() == 2) return 0; // LCURL RCURL
     return statements_varcount(node->children[1]);
 }
 
-int statements_varcount(Node* node) {
+int statements_varcount(const Node* node) {
     // statements : statement
     if(node->children.size() == 1) {
         return statement_varcount(node->children[0]);
     }
     
     vector<Node*> statementList;
-    Node* stmt = node;
+    const Node* stmt = node;
     while(stmt->label == "statements") {
         if(stmt->children.size() == 1) 
             statementList.push_back(stmt->children[0]);
@@ -100,7 +100,7 @@ int statements_varcount(Node* node) {
     return counter;
 }
 
-int statement_varcount(Node* node) {
+int statement_varcount(const Node* node) {
     if(node->children[0]->label == "var_declaration")
         return var_declaration_varcount(node->children[0]);
     if(node->children[0]->label == "compound_statement")
@@ -125,7 +125,7 @@ int statement_varcount(Node* node) {
     return 0;
 }
 
-int var_declaration_varcount(Node* node) {
+int var_declaration_varcount(const Node* node) {
     Node* decl = node->children[1]; // declaration_list
     int counter = 0;
     while(decl->label == "declaration_list") {
@@ -204,7 +204,7 @@ void start() {
     code << "\nEND MAIN" << ENDL;
 }
 
-void compound_statement(Node* node) {
+void compound_statement(const Node* node) {
     if(node->children.size() == 2) return; // LCURL RCURL
     table.enter_scope();
     code << "\n\t; Compund statement starting at line " << node->startLine << ENDL;
@@ -213,7 +213,7 @@ void compound_statement(Node* node) {
     table.exit_scope();
 }
 
-void compound_statement(Node* node, vector<SymbolInfo>& paramList) {
+void compound_statement(const Node* node, vector<SymbolInfo>& paramList) {
     if(node->children.size() == 2) return;
     table.enter_scope();
 
@@ -230,14 +230,14 @@ void compound_statement(Node* node, vector<SymbolInfo>& paramList) {
     table.exit_scope();
 }
 
-void statements(Node* node) {
+void statements(const Node* node) {
     // statements : statement
     if(node->children.size() == 1) {
         return statement(node->children[0]);
     }
     
     vector<Node*> statementList;
-    Node* stmt = node;
+    const Node* stmt = node;
     while(stmt->label == "statements") {
         if(stmt->children.size() == 1) 
             statementList.push_back(stmt->children[0]);
@@ -249,7 +249,7 @@ void statements(Node* node) {
         statement(statementList[i]);
 }
 
-void statement(Node* node) {
+void statement(const Node* node) {
     if(node->children[0]->label == "var_declaration")
         return var_declaration(node->children[0]);
     if(node->children[0]->label == "expression_statement")
@@ -351,7 +351,7 @@ void statement(Node* node) {
     }
 }
 
-void var_declaration(Node* node) {
+void var_declaration(const Node* node) {
     string typeSpecifier = node->children[0]->children[0]->label;
     vector<SymbolInfo*> varList;
     Node* decl = node->children[1]; // declaration_list
@@ -398,7 +398,7 @@ void var_declaration(Node* node) {
     }
 }
 
-void expression_statement(Node* node) { 
+void expression_statement(const Node* node) { 
     if(node->children.size() == 1) return;
     code << "\n\t; Expression statement starting at line " << node->startLine << ENDL;
     expression(node->children[0]);
@@ -406,7 +406,7 @@ void expression_statement(Node* node) {
     code << "\t; Expression statement ending at line " << node->endLine << ENDL;
 }
 
-void variable(Node* node) {
+void variable(const Node* node) {
     SymbolInfo* info = table.lookup(node->children[0]->lexeme);
 
     if(node->children.size() == 1 && info->id == 1) { // global non-array variable
@@ -435,7 +435,7 @@ void variable(Node* node) {
     code << "\tPUSH BP[SI]" << ENDL;
 }
 
-void expression(Node* node) {
+void expression(const Node* node) {
     if(!isnan(node->eval)) {
         code << "\tMOV AX , " << int(node->eval) << ENDL;
         code << "\tPUSH AX" << ENDL;
@@ -443,7 +443,7 @@ void expression(Node* node) {
     }
     
     if(node->children.size() == 1) {
-        Node* currNode = node;
+        const Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
         fptr_expr_void func = get_expr_void_funct(currNode->label);
         return func(currNode);
@@ -488,7 +488,7 @@ void expression(Node* node) {
     code << "\tPUSH BX" << ENDL;
 }
 
-void logic_expression(Node* node) {
+void logic_expression(const Node* node) {
     if(!isnan(node->eval)) {
         code << "\tMOV AX , " << int(node->eval) << ENDL;
         code << "\tPUSH AX" << ENDL;
@@ -496,7 +496,7 @@ void logic_expression(Node* node) {
     }
     
     if(node->children.size() == 1) {
-        Node* currNode = node;
+        const Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
         fptr_expr_void func = get_expr_void_funct(currNode->label);
         return func(currNode);
@@ -531,7 +531,7 @@ void logic_expression(Node* node) {
     code << end_label << ":" << ENDL;
 }
 
-void rel_expression(Node* node) {
+void rel_expression(const Node* node) {
     if(!isnan(node->eval)) {
         code << "\tMOV AX , " << int(node->eval) << ENDL;
         code << "\tPUSH AX" << ENDL;
@@ -539,7 +539,7 @@ void rel_expression(Node* node) {
     }
     
     if(node->children.size() == 1) {
-        Node* currNode = node;
+        const Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
         fptr_expr_void func = get_expr_void_funct(currNode->label);
         return func(currNode);
@@ -568,7 +568,7 @@ void rel_expression(Node* node) {
     code << end_label << ":" << ENDL;
 }
 
-void simple_expression(Node* node) {
+void simple_expression(const Node* node) {
     if(!isnan(node->eval)) {
         code << "\tMOV AX , " << int(node->eval) << ENDL;
         code << "\tPUSH AX" << ENDL;
@@ -576,7 +576,7 @@ void simple_expression(Node* node) {
     }
     
     if(node->children.size() == 1) {
-        Node* currNode = node;
+        const Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
         fptr_expr_void func = get_expr_void_funct(currNode->label);
         return func(currNode);
@@ -596,7 +596,7 @@ void simple_expression(Node* node) {
     code << "\tPUSH AX" << ENDL;
 }
 
-void term(Node* node) {
+void term(const Node* node) {
     if(!isnan(node->eval)) {
         code << "\tMOV AX , " << int(node->eval) << ENDL;
         code << "\tPUSH AX" << ENDL;
@@ -604,7 +604,7 @@ void term(Node* node) {
     }
     
     if(node->children.size() == 1) {
-        Node* currNode = node;
+        const Node* currNode = node;
         while(currNode->children.size() == 1 && currNode->label != "factor") currNode = currNode->children[0];
         fptr_expr_void func = get_expr_void_funct(currNode->label);
         return func(currNode);
@@ -631,7 +631,7 @@ void term(Node* node) {
     }
 }
 
-void unary_expression(Node* node) {
+void unary_expression(const Node* node) {
     if(!isnan(node->eval)) {
         code << "\tMOV AX , " << int(node->eval) << ENDL;
         code << "\tPUSH AX" << ENDL;
@@ -662,7 +662,7 @@ void unary_expression(Node* node) {
     code << end_label << ":" << ENDL;
 }
 
-void factor(Node* node) {
+void factor(const Node* node) {
     string label = node->children[0]->label;
     if(label == "CONST_INT" || label == "CONST_FLOAT") {
         code << "\tMOV AX , " << stoi(node->children[0]->lexeme) << ENDL;
@@ -719,7 +719,7 @@ void factor(Node* node) {
     }
 }
 
-void argument_list(Node* node) {
+void argument_list(const Node* node) {
     if(node->children.size() == 0) return;
     Node* arguments = node->children[0];
     while(arguments->label == "arguments") {
