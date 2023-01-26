@@ -373,7 +373,14 @@ void statement(const Node* node) {
     }
 
     // PRINTLN LPAREN ID RPAREN SEMICOLON
-    
+    SymbolInfo* info = table.lookup(node->children[2]->lexeme);
+    if(info->id == 1) {
+        code << "\tMOV AX , " << info->name << ENDL;
+    }
+    else {
+        code << "\tMOV AX , BP[" << info->stackOffset << "]" << ENDL;
+    }
+    code << "\tCALL println" << ENDL;
 }
 
 void var_declaration(const Node* node) {

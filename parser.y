@@ -905,7 +905,7 @@ statement : var_declaration {
 		| PRINTLN LPAREN ID RPAREN SEMICOLON {
 			log_print("statement: PRINTLN LPAREN ID RPAREN SEMICOLON");
 			$$ = new Node(false, "statement");
-			$$->children.push_back(new Node(true, "PRINTLN", "printf", $1));
+			$$->children.push_back(new Node(true, "PRINTLN", "println", $1));
 			$$->children.push_back(new Node(true, "LPAREN", "(", $2));
 			$$->children.push_back(new Node(true, "ID", $3->name, $3->line));
 			$$->children.push_back(new Node(true, "RPAREN", ")", $4));
