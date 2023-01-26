@@ -1424,7 +1424,12 @@ int main(int argc,char *argv[])
 	print_tree(parseout, 0, root);
 
 	start(root);
-	run_optimizer(2, 128);
+	int p=2, q=128;
+	/* std::cout<<"Enter optimizer iteration count: ";
+	std::cin>>p;
+	std::cout<<"Enter peephole size: ";
+	std::cin>>q; */
+	run_optimizer(p, q);
 
 	fclose(fin);
 	fclose(logout);
