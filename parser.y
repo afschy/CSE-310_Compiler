@@ -1424,7 +1424,7 @@ int main(int argc,char *argv[])
 	print_tree(parseout, 0, root);
 
 	start(root);
-	run_optimizer(8, 32);
+	run_optimizer(2, 128);
 
 	fclose(fin);
 	fclose(logout);

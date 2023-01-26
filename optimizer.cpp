@@ -57,7 +57,7 @@ void copy_whole_file(const string& oldFileName, const string& newFileName) {
 }
 
 // Replaces redundant push-pops with MOV instructions or removes them entirely
-void optimize_push_pop(string* inputStrings, vector<string>* tokenList, bool* flags, int n) {
+void optimize_push_pop(string* inputStrings, vector<string>* tokenList, bool* flags, const int n) {
     string pushed, popped;
     for(int i=0; i<n; i++) {
         if(!flags[i]) continue;
@@ -133,17 +133,53 @@ void optimize_push_pop(string* inputStrings, vector<string>* tokenList, bool* fl
     }
 }
 
-void remove_redundant_arithmetic(vector<string>* tokenList, bool* flags, int n) {
+// Removes addition or subtraction of 0 and multiplication or division by 1
+void remove_redundant_arithmetic(vector<string>* tokenList, bool* flags, const int n) {
     for(int i=0; i<n; i++) {
         if(!flags[i]) continue;
         if(tokenList[i].size()>=4 && (tokenList[i][0]=="ADD" || tokenList[i][0]=="SUB") && is_const(tokenList[i][3]) && stoi(tokenList[i][3])==0)
             flags[i] = false;
         if(tokenList[i].size()>=2 && (tokenList[i][0]=="MUL" || tokenList[i][0]=="IMUL") && is_const(tokenList[i][1]) && stoi(tokenList[i][1])==1)
             flags[i] = false;
+        if(tokenList[i].size()>=2 && (tokenList[i][0]=="DIV" || tokenList[i][0]=="IDIV") && is_const(tokenList[i][1]) && stoi(tokenList[i][1])==1)
+            flags[i] = false;
     }
 }
 
-void optimize(const string& oldFileName, const string& newFileName, int chunkSize) {
+// Replaces double moves with single moves
+void optimize_move(string* inputStrings, vector<string>* tokenList, bool* flags, const int n) {
+    string op11, op12, op21, op22;
+    for(int i=0; i<n-1; i++) {
+        if(!flags[i]) continue;
+        if(tokenList[i].size() != 4 || tokenList[i][0] != "MOV") continue;
+
+        // Find next instruction that was not removed in a previous optimization stage
+        int j;
+        for(j=i+1; j<n; j++) 
+            if(flags[j]) break;
+        if(j==n) continue; // No next instruction exists
+        if(tokenList[j].size() != 4 || tokenList[j][0] != "MOV") continue;
+
+        op11 = tokenList[i][1];
+        op12 = tokenList[i][3];
+        op21 = tokenList[j][1];
+        op22 = tokenList[j][3];
+        if(op11 != op22) continue;
+        if(op11 == "DS" || op12 == "DS" || op21 == "DS" || op22 == "DS") continue;
+        if(is_mem(op21) && is_mem(op12)) continue;
+
+        // MOV A , B
+        // MOV C , A
+        flags[i] = false;
+        inputStrings[j] = "\tMOV ";
+        if(is_mem(op21) && is_const(op12))
+            inputStrings[j] += "WORD PTR ";
+        inputStrings[j] += op21 + " , " + op12;
+        tokenize(inputStrings[j], tokenList[j]);
+    }
+}
+
+void optimize(const string& oldFileName, const string& newFileName, const int chunkSize) {
     oldfile.open(oldFileName);
     newfile.open(newFileName);
     
@@ -177,6 +213,7 @@ void optimize(const string& oldFileName, const string& newFileName, int chunkSiz
 
         optimize_push_pop(inputStrings, tokenList, flags, n);
         remove_redundant_arithmetic(tokenList, flags, n);
+        optimize_move(inputStrings, tokenList, flags, n);
 
         for(int i=0; i<n; i++) {
             if(!flags[i]) continue;
@@ -193,13 +230,19 @@ void optimize(const string& oldFileName, const string& newFileName, int chunkSiz
     newfile.close();
 }
 
-void run_optimizer(int iter, int chunkSize) {
+void run_optimizer(const int iter, const int chunkSize) {
     copy_whole_file("code.asm", "temp.asm");
     optimize("temp.asm", "optimized_code.asm", chunkSize);
-    for(int i=0; i<iter; i++) {
-        copy_whole_file("optimized_code.asm", "temp.asm");
-        optimize("temp.asm", "optimized_code.asm", chunkSize);
+    for(int count=chunkSize; count>1; count/=2) {
+        for(int i=0; i<iter; i++) {
+            copy_whole_file("optimized_code.asm", "temp.asm");
+            optimize("temp.asm", "optimized_code.asm", count);
+        }
     }
+    // for(int i=0; i<iter; i++) {
+    //     copy_whole_file("optimized_code.asm", "temp.asm");
+    //     optimize("temp.asm", "optimized_code.asm", chunkSize);
+    // }
 }
 
 // int main() {
