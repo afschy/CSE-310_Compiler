@@ -33,8 +33,6 @@ vector<SymbolInfo*> currVars;
 vector<SymbolInfo*> currParams;
 vector<string> argList;
 vector<Node*> unitList;
-vector<SymbolInfo*> globalVarList;
-vector<Node*> exprList;
 
 // function helpers
 bool inFunction = false;
@@ -515,7 +513,6 @@ func_definition : type_specifier ID LPAREN parameter_list RPAREN {insert_functio
 			$$->children.push_back($6);
 			$$->update_line();
 			
-			// exprList.push_back($6);
 		}
 		| error ID LPAREN parameter_list RPAREN {insert_function("VOID", $2);} compound_statement { // Wrong or missing type specifier
 			log_print("func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement");
@@ -679,7 +676,7 @@ var_declaration : type_specifier declaration_list SEMICOLON {
 						fprintf(logout, "Line# %d: Identifier %s already in use\n", currVars[i]->line, currVars[i]->name.c_str());
 						error_count++;
 					}
-					if(currVars[i]->id == 1) globalVarList.push_back(new SymbolInfo(currVars[i]));
+					// if(currVars[i]->id == 1) globalVarList.push_back(new SymbolInfo(currVars[i]));
 				}
 			}
 			currVars.clear();
@@ -849,14 +846,12 @@ statement : var_declaration {
 			$$ = new Node(false, "statement");
 			$$->children.push_back($1);
 			$$->update_line();
-			// exprList.push_back($$);
 		}
 		| expression_statement {
 			log_print("statement : expression_statement");
 			$$ = new Node(false, "statement");
 			$$->children.push_back($1);
 			$$->update_line();
-			// exprList.push_back($$);
 		}
 		| compound_statement {
 			log_print("statement: compound_statement");
@@ -967,7 +962,6 @@ expression_statement : SEMICOLON {
 				$$ = new Node(false, "expression_statement");
 				$$->children.push_back(new Node(true, "SEMICOLON", ";", $1));
 				$$->update_line();
-				exprList.push_back($$);
 			}
 			| expression SEMICOLON {
 				log_print("expression_statement : expression SEMICOLON");
@@ -975,7 +969,6 @@ expression_statement : SEMICOLON {
 				$$->children.push_back($1);
 				$$->children.push_back(new Node(true, "SEMICOLON", ";", $2));
 				$$->update_line();
-				// exprList.push_back($$);
 				// expression_statement($$);
 			}
 			| expression error { // Semicolon missing, catcher a lot of other errors

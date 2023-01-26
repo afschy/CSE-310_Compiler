@@ -31,8 +31,7 @@ string get_label() {
 }
 
 extern vector<Node*> unitList;
-extern vector<SymbolInfo*> globalVarList;
-extern vector<Node*> exprList;
+vector<SymbolInfo*> globalVarList;
 
 // Has only the global variables and functions inserted at start
 extern SymbolTable table;
@@ -150,6 +149,12 @@ void start() {
     code << ".MODEL SMALL" << ENDL;
     code << ".STACK 100H" << ENDL;
     code << ".DATA" << ENDL;
+
+    for(int i=0; i<unitList.size(); i++) {
+        if(unitList[i]->label != "var_declaration") continue;
+        var_declaration(unitList[i]);
+    }
+
     for(int i=0; i<globalVarList.size(); i++) {
         if(globalVarList[i]->isArray)
             code << "\t" << globalVarList[i]->name << " DW " << globalVarList[i]->arrSize << " DUP (0000H)" << "\n";
@@ -362,26 +367,47 @@ void var_declaration(const Node* node) {
         if(decl->children.size() == 1) { // ID
             name = decl->children[0]->lexeme;
             line = decl->children[0]->startLine;
-            varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+            if(table.get_top_id() == 1) 
+                globalVarList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+            else
+                varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
         }
         else if(decl->children.size() == 4) { // ID LTHIRD CONST_INT RTHIRD
             name = decl->children[0]->lexeme;
             line = decl->children[0]->startLine;
-            varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
-            varList[varList.size()-1]->isArray = true;
-            varList[varList.size()-1]->arrSize = stoi(decl->children[2]->lexeme);
+            if(table.get_top_id() == 1) {
+                globalVarList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+                globalVarList[globalVarList.size()-1]->isArray = true;
+                globalVarList[globalVarList.size()-1]->arrSize = stoi(decl->children[2]->lexeme);
+            }
+            else {
+                varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+                varList[varList.size()-1]->isArray = true;
+                varList[varList.size()-1]->arrSize = stoi(decl->children[2]->lexeme);
+            }
         }
         else if(decl->children.size() == 3) { // declaration_list COMMA ID
             name = decl->children[2]->lexeme;
             line = decl->children[2]->startLine;
-            varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+            if(table.get_top_id() == 1) 
+                globalVarList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+            else 
+                varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
         }
         else { // declaration_list COMMA ID LTHIRD CONST_INT RTHIRD
             name = decl->children[2]->lexeme;
             line = decl->children[2]->startLine;
-            varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
-            varList[varList.size()-1]->isArray = true;
-            varList[varList.size()-1]->arrSize = stoi(decl->children[4]->lexeme);
+            if(table.get_top_id() == 1) {
+                globalVarList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+                globalVarList[globalVarList.size()-1]->isArray = true;
+                globalVarList[globalVarList.size()-1]->arrSize = stoi(decl->children[4]->lexeme);
+            }
+            else {
+                varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+                varList[varList.size()-1]->isArray = true;
+                varList[varList.size()-1]->arrSize = stoi(decl->children[4]->lexeme);
+            }
+            
         }
         decl = decl->children[0];
     }
