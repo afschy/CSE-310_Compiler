@@ -15,7 +15,7 @@ using std::vector, std::string, std::isnan, std::to_string;
 
 typedef void (*fptr_expr_void)(const Node* node);
 
-extern std::ofstream code;
+std::ofstream code;
 
 // Used in return statements to jump to the label before RET
 string return_label;
@@ -145,9 +145,11 @@ int var_declaration_varcount(const Node* node) {
 }
 
 void start(const Node* node) {
+    code.open("code.asm", std::ofstream::out);
     code << ".MODEL SMALL" << ENDL;
     code << ".STACK 100H" << ENDL;
     code << ".DATA" << ENDL;
+    code << "\t__number__ DB \"00000$\"" << ENDL;
 
     const Node* program = node->children[0];
     vector<Node*> unitList;
@@ -213,7 +215,14 @@ void start(const Node* node) {
         }
         code << info->name << " ENDP" << ENDL;
     }
+
+    std::ifstream printlnFile("println.asm");
+    string str;
+    while(getline(printlnFile, str)) 
+        code << str << ENDL;
     code << "\nEND MAIN" << ENDL;
+    code.close();
+    printlnFile.close();
 }
 
 void compound_statement(const Node* node) {
@@ -360,7 +369,11 @@ void statement(const Node* node) {
     if(node->children[0]->label == "RETURN") {
         code << "\t; Return statement at line " << node->startLine << ENDL;
         code << "\tJMP " << return_label << ENDL;
+        return;
     }
+
+    // PRINTLN LPAREN ID RPAREN SEMICOLON
+    
 }
 
 void var_declaration(const Node* node) {

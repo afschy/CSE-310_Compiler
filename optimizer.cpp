@@ -28,7 +28,7 @@ bool is_const(const string& str) {
     return false;
 }
 
-bool is_memconst (const string& str) {
+bool is_mem (const string& str) {
     return !(is_reg(str) || is_const(str));
 }
 

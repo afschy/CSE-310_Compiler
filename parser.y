@@ -19,7 +19,6 @@ extern FILE *yyin;
 FILE *logout;
 FILE *errout;
 FILE *parseout;
-std::ofstream code;
 
 // counters
 extern int line_count;
@@ -1415,7 +1414,6 @@ int main(int argc,char *argv[])
 	logout= fopen("log.txt","w");
 	errout = fopen("error.txt", "w");
 	parseout = fopen("parsetree.txt", "w");
-	code.open("code.asm", std::ofstream::out);
 
 	yyin=fin;
 	yyparse();
@@ -1426,7 +1424,6 @@ int main(int argc,char *argv[])
 	print_tree(parseout, 0, root);
 
 	start(root);
-	code.close();
 	run_optimizer(8, 32);
 
 	fclose(fin);
