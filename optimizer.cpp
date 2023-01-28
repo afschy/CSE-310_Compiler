@@ -100,6 +100,7 @@ void optimize_push_pop(string* inputStrings, vector<string>* tokenList, bool* fl
         // To see if the pushed variable/register was changed before the pop
         bool useFlag = false;
         for(int k=i+1; k<j; k++) {
+            if(!flags[k]) continue;
             if(tokenList[k].size()>=2 && tokenList[k][1]==pushed) {
                 useFlag = true;
                 break;
@@ -174,12 +175,20 @@ void optimize_move(string* inputStrings, vector<string>* tokenList, bool* flags,
         op12 = tokenList[i][3];
         op21 = tokenList[j][1];
         op22 = tokenList[j][3];
+
+        // MOV a , b
+        // MOV b , a
+        if(op11 == op22 && op21 == op12) {
+            flags[j] = false;
+            continue;
+        }
+
         if(op11 != op22) continue;
-        if(op11 == "DS" || op12 == "DS" || op21 == "DS" || op22 == "DS") continue;
+        if(!is_reg(op11)) continue;
         if(is_mem(op21) && is_mem(op12)) continue;
 
-        // MOV A , B
-        // MOV C , A
+        // MOV reg_i , const/mem
+        // MOV dest , reg_i
         flags[i] = false;
         inputStrings[j] = "\tMOV ";
         if(is_mem(op21) && is_const(op12))

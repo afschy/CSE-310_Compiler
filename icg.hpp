@@ -380,7 +380,7 @@ void statement(const Node* node) {
     else {
         code << "\tMOV AX , BP[" << info->stackOffset << "]" << ENDL;
     }
-    code << "\tCALL println" << ENDL;
+    code << "\tCALL println" << " ; At line " << node->children[0]->startLine << ENDL;
 }
 
 void var_declaration(const Node* node) {
@@ -731,7 +731,7 @@ void factor(const Node* node) {
 
     if(label == "ID") {
         argument_list(node->children[2]);
-        code << "\tCALL " << node->children[0]->lexeme << ENDL;
+        code << "\tCALL " << node->children[0]->lexeme << " ; At line " << node->children[0]->startLine << ENDL;
         code << "\tPUSH AX" << ENDL; // Return value was stored in AX
     }
 }
