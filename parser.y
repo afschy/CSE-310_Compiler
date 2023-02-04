@@ -902,16 +902,15 @@ statement : var_declaration {
 			$$->children.push_back($5);
 			$$->update_line();
 		}
-		| PRINTLN LPAREN ID RPAREN SEMICOLON {
-			log_print("statement: PRINTLN LPAREN ID RPAREN SEMICOLON");
+		| PRINTLN LPAREN expression RPAREN SEMICOLON {
+			log_print("statement: PRINTLN LPAREN expression RPAREN SEMICOLON");
 			$$ = new Node(false, "statement");
 			$$->children.push_back(new Node(true, "PRINTLN", "println", $1));
 			$$->children.push_back(new Node(true, "LPAREN", "(", $2));
-			$$->children.push_back(new Node(true, "ID", $3->name, $3->line));
+			$$->children.push_back($3);
 			$$->children.push_back(new Node(true, "RPAREN", ")", $4));
 			$$->children.push_back(new Node(true, "SEMICOLON", ";", $5));
 			$$->update_line();
-			del_s($3);
 		}
 		| RETURN expression SEMICOLON {
 			log_print("statement: RETURN expression SEMICOLON");
@@ -1424,7 +1423,7 @@ int main(int argc,char *argv[])
 	print_tree(parseout, 0, root);
 
 	start(root);
-	int p=2, q=128;
+	int p=2, q=16;
 	/* std::cout<<"Enter optimizer iteration count: ";
 	std::cin>>p;
 	std::cout<<"Enter peephole size: ";

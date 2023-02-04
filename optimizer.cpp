@@ -150,10 +150,6 @@ void remove_redundant_arithmetic(vector<string>* tokenList, bool* flags, const i
         if(!flags[i]) continue;
         if(tokenList[i].size()>=4 && (tokenList[i][0]=="ADD" || tokenList[i][0]=="SUB") && is_const(tokenList[i][3]) && stoi(tokenList[i][3])==0)
             flags[i] = false;
-        if(tokenList[i].size()>=2 && (tokenList[i][0]=="MUL" || tokenList[i][0]=="IMUL") && is_const(tokenList[i][1]) && stoi(tokenList[i][1])==1)
-            flags[i] = false;
-        if(tokenList[i].size()>=2 && (tokenList[i][0]=="DIV" || tokenList[i][0]=="IDIV") && is_const(tokenList[i][1]) && stoi(tokenList[i][1])==1)
-            flags[i] = false;
     }
 }
 
@@ -252,7 +248,7 @@ void optimize(const string& oldFileName, const string& newFileName, const int ch
 void run_optimizer(const int iter, const int chunkSize) {
     copy_whole_file("code.asm", "temp.asm");
     optimize("temp.asm", "optimized_code.asm", chunkSize);
-    for(int count=chunkSize; count>1; count/=2) {
+    for(int count=chunkSize; count>1; count-=2) {
         for(int i=0; i<iter; i++) {
             copy_whole_file("optimized_code.asm", "temp.asm");
             optimize("temp.asm", "optimized_code.asm", count);
@@ -263,9 +259,5 @@ void run_optimizer(const int iter, const int chunkSize) {
     //     optimize("temp.asm", "optimized_code.asm", chunkSize);
     // }
 }
-
-// int main() {
-//     run_optimizer(8, 32);
-// }
 
 #endif

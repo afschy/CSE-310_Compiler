@@ -147,7 +147,7 @@ int var_declaration_varcount(const Node* node) {
 void start(const Node* node) {
     code.open("code.asm", std::ofstream::out);
     code << ".MODEL SMALL" << ENDL;
-    code << ".STACK 100H" << ENDL;
+    code << ".STACK 1000H" << ENDL;
     code << ".DATA" << ENDL;
     code << "\t__number__ DB \"00000$\"" << ENDL;
 
@@ -372,14 +372,9 @@ void statement(const Node* node) {
         return;
     }
 
-    // PRINTLN LPAREN ID RPAREN SEMICOLON
-    SymbolInfo* info = table.lookup(node->children[2]->lexeme);
-    if(info->id == 1) {
-        code << "\tMOV AX , " << info->name << ENDL;
-    }
-    else {
-        code << "\tMOV AX , BP[" << info->stackOffset << "]" << ENDL;
-    }
+    // PRINTLN LPAREN expression RPAREN SEMICOLON
+    expression(node->children[2]);
+    code << "\tPOP AX" << ENDL;
     code << "\tCALL println" << " ; At line " << node->children[0]->startLine << ENDL;
 }
 
@@ -542,34 +537,45 @@ void logic_expression(const Node* node) {
         fptr_expr_void func = get_expr_void_funct(currNode->label);
         return func(currNode);
     }
-
-    rel_expression(node->children[0]);
-    rel_expression(node->children[2]);
-    code << "\tPOP AX" << ENDL;
-    code << "\tPOP CX" << ENDL;
-    string zero_label = get_label(), end_label = get_label(); 
-
+    
     if(node->children[1]->lexeme == "||") {
-        code << "\tOR AX , CX" << ENDL;
+        string one_label = get_label(), end_label = get_label();
+        rel_expression(node->children[0]);
+        code << "\tPOP AX" << ENDL;
         code << "\tCMP AX , 0" << ENDL;
-        code << "\tJE " << zero_label << ENDL;
-        code << "\tPUSH 1" << ENDL;
+        code << "\tJNE " << one_label << ENDL;
+
+        rel_expression(node->children[2]);
+        code << "\tPOP AX" << ENDL;
+        code << "\tCMP AX , 0" << ENDL;
+        code << "\tJNE " << one_label << ENDL;
+
+        code << "\tMOV AX , 0" << ENDL;
         code << "\tJMP " << end_label << ENDL;
-        code << zero_label << ":" << ENDL;
-        code << "\tPUSH 0" << ENDL;
+        code << one_label << ":" << ENDL;
+        code << "\tMOV AX , 1" << ENDL;
         code << end_label << ":" << ENDL;
+        code << "\tPUSH AX" << ENDL;
         return;
     }
 
+    string zero_label = get_label(), end_label = get_label(); 
+    rel_expression(node->children[0]);
+    code << "\tPOP AX" << ENDL;
     code << "\tCMP AX , 0" << ENDL;
     code << "\tJE " << zero_label << ENDL;
-    code << "\tCMP CX , 0" << ENDL;
+
+    rel_expression(node->children[2]);
+    code << "\tPOP AX" << ENDL;
+    code << "\tCMP AX , 0" << ENDL;
     code << "\tJE " << zero_label << ENDL;
-    code << "\tPUSH 1" << ENDL;
+
+    code << "\tMOV AX , 1" << ENDL;
     code << "\tJMP " << end_label << ENDL;
     code << zero_label << ":" << ENDL;
-    code << "\tPUSH 0" << ENDL;
+    code << "\tMOV AX , 0" << ENDL;
     code << end_label << ":" << ENDL;
+    code << "\tPUSH AX" << ENDL;
 }
 
 void rel_expression(const Node* node) {
@@ -596,11 +602,12 @@ void rel_expression(const Node* node) {
     if(op == "==") code << "\tJE " << one_label << ENDL;
     if(op == "!=") code << "\tJNE " << one_label << ENDL;
 
-    code << "\tPUSH 0" << ENDL;
+    code << "\tMOV AX , 0" << ENDL;
     code << "\tJMP " << end_label << ENDL;
     code << one_label << ":" << ENDL;
-    code << "\tPUSH 1" << ENDL;
+    code << "\tMOV AX , 1" << ENDL;
     code << end_label << ":" << ENDL;
+    code << "\tPUSH AX" << ENDL;
 }
 
 void simple_expression(const Node* node) {
