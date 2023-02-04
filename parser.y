@@ -1423,7 +1423,7 @@ int main(int argc,char *argv[])
 	print_tree(parseout, 0, root);
 
 	start(root);
-	int p=2, q=16;
+	int p=2, q=32;
 	/* std::cout<<"Enter optimizer iteration count: ";
 	std::cin>>p;
 	std::cout<<"Enter peephole size: ";
