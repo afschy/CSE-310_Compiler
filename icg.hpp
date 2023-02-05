@@ -166,9 +166,9 @@ void start(const Node* node) {
 
     for(int i=0; i<globalVarList.size(); i++) {
         if(globalVarList[i]->isArray)
-            code << "\t" << globalVarList[i]->name << " DW " << globalVarList[i]->arrSize << " DUP (0000H)" << "\n";
+            code << "\t_" << globalVarList[i]->name << " DW " << globalVarList[i]->arrSize << " DUP (0000H)" << "\n";
         else
-            code << "\t" << globalVarList[i]->name << " DW 0" << "\n";
+            code << "\t_" << globalVarList[i]->name << " DW 0" << "\n";
         delete globalVarList[i];
     }
     globalVarList.clear();
@@ -458,7 +458,7 @@ void variable(const Node* node) {
     SymbolInfo* info = table.lookup(node->children[0]->lexeme);
 
     if(node->children.size() == 1 && info->id == 1) { // global non-array variable
-        code << "\tPUSH " << info->name << ENDL;
+        code << "\tPUSH _" << info->name << ENDL;
         return;
     }
 
@@ -471,7 +471,7 @@ void variable(const Node* node) {
         expression(node->children[2]);
         code << "\tPOP SI" << ENDL;
         code << "\tSHL SI , 1" << ENDL;
-        code << "\tPUSH " << info->name << "[SI]" << ENDL;
+        code << "\tPUSH _" << info->name << "[SI]" << ENDL;
         return;
     }
 
@@ -498,7 +498,7 @@ void expression(const Node* node) {
     
     if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
         code << "\tPOP AX" << ENDL;
-        code << "\tMOV " << info->name << " , AX" << ENDL;
+        code << "\tMOV _" << info->name << " , AX" << ENDL;
         code << "\tPUSH AX" << ENDL;
         return;
     }
@@ -515,7 +515,7 @@ void expression(const Node* node) {
         expression(variable->children[2]);
         code << "\tPOP SI" << ENDL;
         code << "\tSHL SI , 1" << ENDL;
-        code << "\tMOV " << info->name << "[SI] , BX" << ENDL;
+        code << "\tMOV _" << info->name << "[SI] , BX" << ENDL;
         code << "\tPUSH BX" << ENDL;
         return;
     }
@@ -706,9 +706,9 @@ void factor(const Node* node) {
         
         if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
             if(node->children[1]->label == "INCOP") {
-                code << "\tADD WORD PTR " << info->name << " , 1" << ENDL;
+                code << "\tADD WORD PTR _" << info->name << " , 1" << ENDL;
             }
-            else code << "\tSUB WORD PTR " << info->name << " , 1" << ENDL;
+            else code << "\tSUB WORD PTR _" << info->name << " , 1" << ENDL;
             return;
         }
 
@@ -722,9 +722,9 @@ void factor(const Node* node) {
 
         if(info->id == 1) { // global array
             if(node->children[1]->label == "INCOP") {
-                code << "\tADD WORD PTR " << info->name << "[SI] , 1" << ENDL;
+                code << "\tADD WORD PTR _" << info->name << "[SI] , 1" << ENDL;
             }
-            else code << "\tSUB WORD PTR " << info->name << "[SI] , 1" << ENDL;
+            else code << "\tSUB WORD PTR _" << info->name << "[SI] , 1" << ENDL;
             return;
         }
 

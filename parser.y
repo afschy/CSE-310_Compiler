@@ -1415,6 +1415,7 @@ int main(int argc,char *argv[])
 	parseout = fopen("parsetree.txt", "w");
 
 	yyin=fin;
+	table.insert(new SymbolInfo("_number__", "RESERVED" , 0));
 	yyparse();
 
 	table.print_all_tables();
