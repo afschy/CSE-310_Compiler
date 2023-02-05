@@ -31,6 +31,7 @@ string get_label() {
 }
 
 vector<SymbolInfo*> globalVarList;
+int global_symbol_count = 0;
 
 // Has only the global variables and functions inserted at start
 extern SymbolTable table;
@@ -166,9 +167,9 @@ void start(const Node* node) {
 
     for(int i=0; i<globalVarList.size(); i++) {
         if(globalVarList[i]->isArray)
-            code << "\t_" << globalVarList[i]->name << " DW " << globalVarList[i]->arrSize << " DUP (0000H)" << "\n";
+            code << "\t" << globalVarList[i]->asmName << " DW " << globalVarList[i]->arrSize << " DUP (0000H)" << "\n";
         else
-            code << "\t_" << globalVarList[i]->name << " DW 0" << "\n";
+            code << "\t" << globalVarList[i]->asmName << " DW 0" << "\n";
         delete globalVarList[i];
     }
     globalVarList.clear();
@@ -181,8 +182,9 @@ void start(const Node* node) {
         if(unitList[i]->label != "func_definition") continue;
         currFunc = unitList[i];
         info = table.lookup(currFunc->children[1]->lexeme);
+        info->asmName = info->name + "_" + std::to_string(global_symbol_count++);
         if(info->name != "main") {
-            code << "\n_" << info->name << " PROC" << ENDL;
+            code << "\n" << info->asmName << " PROC" << ENDL;
         }
         else
             code << "\nmain PROC" << ENDL;
@@ -218,7 +220,7 @@ void start(const Node* node) {
             code << ENDL;
         }
         if(info->name != "main") {
-            code << "\n_" << info->name << " ENDP" << ENDL;
+            code << "\n" << info->asmName << " ENDP" << ENDL;
         }
         else
             code << "\nmain ENDP" << ENDL;
@@ -397,8 +399,12 @@ void var_declaration(const Node* node) {
         if(decl->children.size() == 1) { // ID
             name = decl->children[0]->lexeme;
             line = decl->children[0]->startLine;
-            if(table.get_top_id() == 1) 
+            if(table.get_top_id() == 1) {
                 globalVarList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+                globalVarList[globalVarList.size()-1]->asmName = name + "_" + std::to_string(global_symbol_count++);
+                SymbolInfo* info = table.lookup(name);
+                info->asmName = globalVarList[globalVarList.size()-1]->asmName;
+            }
             else
                 varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
         }
@@ -409,6 +415,9 @@ void var_declaration(const Node* node) {
                 globalVarList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
                 globalVarList[globalVarList.size()-1]->isArray = true;
                 globalVarList[globalVarList.size()-1]->arrSize = stoi(decl->children[2]->lexeme);
+                globalVarList[globalVarList.size()-1]->asmName = name + "_" + std::to_string(global_symbol_count++);
+                SymbolInfo* info = table.lookup(name);
+                info->asmName = globalVarList[globalVarList.size()-1]->asmName;
             }
             else {
                 varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
@@ -419,8 +428,12 @@ void var_declaration(const Node* node) {
         else if(decl->children.size() == 3) { // declaration_list COMMA ID
             name = decl->children[2]->lexeme;
             line = decl->children[2]->startLine;
-            if(table.get_top_id() == 1) 
+            if(table.get_top_id() == 1) {
                 globalVarList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
+                globalVarList[globalVarList.size()-1]->asmName = name + "_" + std::to_string(global_symbol_count++);
+                SymbolInfo* info = table.lookup(name);
+                info->asmName = globalVarList[globalVarList.size()-1]->asmName;
+            }
             else 
                 varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
         }
@@ -431,6 +444,9 @@ void var_declaration(const Node* node) {
                 globalVarList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
                 globalVarList[globalVarList.size()-1]->isArray = true;
                 globalVarList[globalVarList.size()-1]->arrSize = stoi(decl->children[4]->lexeme);
+                globalVarList[globalVarList.size()-1]->asmName = name + "_" + std::to_string(global_symbol_count++);
+                SymbolInfo* info = table.lookup(name);
+                info->asmName = globalVarList[globalVarList.size()-1]->asmName;
             }
             else {
                 varList.push_back(new SymbolInfo(name.c_str(), typeSpecifier.c_str(), line));
@@ -466,7 +482,7 @@ void variable(const Node* node) {
     SymbolInfo* info = table.lookup(node->children[0]->lexeme);
 
     if(node->children.size() == 1 && info->id == 1) { // global non-array variable
-        code << "\tPUSH _" << info->name << ENDL;
+        code << "\tPUSH " << info->asmName << ENDL;
         return;
     }
 
@@ -479,7 +495,7 @@ void variable(const Node* node) {
         expression(node->children[2]);
         code << "\tPOP SI" << ENDL;
         code << "\tSHL SI , 1" << ENDL;
-        code << "\tPUSH _" << info->name << "[SI]" << ENDL;
+        code << "\tPUSH " << info->asmName << "[SI]" << ENDL;
         return;
     }
 
@@ -506,7 +522,7 @@ void expression(const Node* node) {
     
     if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
         code << "\tPOP AX" << ENDL;
-        code << "\tMOV _" << info->name << " , AX" << ENDL;
+        code << "\tMOV " << info->asmName << " , AX" << ENDL;
         code << "\tPUSH AX" << ENDL;
         return;
     }
@@ -523,7 +539,7 @@ void expression(const Node* node) {
         expression(variable->children[2]);
         code << "\tPOP SI" << ENDL;
         code << "\tSHL SI , 1" << ENDL;
-        code << "\tMOV _" << info->name << "[SI] , BX" << ENDL;
+        code << "\tMOV " << info->asmName << "[SI] , BX" << ENDL;
         code << "\tPUSH BX" << ENDL;
         return;
     }
@@ -714,9 +730,9 @@ void factor(const Node* node) {
         
         if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
             if(node->children[1]->label == "INCOP") {
-                code << "\tADD WORD PTR _" << info->name << " , 1" << ENDL;
+                code << "\tADD WORD PTR " << info->asmName << " , 1" << ENDL;
             }
-            else code << "\tSUB WORD PTR _" << info->name << " , 1" << ENDL;
+            else code << "\tSUB WORD PTR " << info->asmName << " , 1" << ENDL;
             return;
         }
 
@@ -730,9 +746,9 @@ void factor(const Node* node) {
 
         if(info->id == 1) { // global array
             if(node->children[1]->label == "INCOP") {
-                code << "\tADD WORD PTR _" << info->name << "[SI] , 1" << ENDL;
+                code << "\tADD WORD PTR " << info->asmName << "[SI] , 1" << ENDL;
             }
-            else code << "\tSUB WORD PTR _" << info->name << "[SI] , 1" << ENDL;
+            else code << "\tSUB WORD PTR " << info->asmName << "[SI] , 1" << ENDL;
             return;
         }
 
@@ -746,7 +762,8 @@ void factor(const Node* node) {
 
     if(label == "ID") {
         argument_list(node->children[2]);
-        code << "\tCALL _" << node->children[0]->lexeme << " ; At line " << node->children[0]->startLine << ENDL;
+        SymbolInfo* info = table.lookup(node->children[0]->lexeme);
+        code << "\tCALL " << info->asmName << " ; At line " << node->children[0]->startLine << ENDL;
         code << "\tPUSH AX" << ENDL; // Return value was stored in AX
     }
 }

@@ -28,6 +28,7 @@ public:
 
     std::string name;
     std::string type;
+    std::string asmName;
     SymbolInfo* next;
     int line;
     bool isArray;
