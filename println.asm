@@ -4,7 +4,7 @@ println proc  ;print what is in ax
     push cx
     push dx
     push si
-    lea si,__number__
+    lea si,number
     mov bx,10
     add si,4
     cmp ax,0

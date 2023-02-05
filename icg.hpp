@@ -149,7 +149,7 @@ void start(const Node* node) {
     code << ".MODEL SMALL" << ENDL;
     code << ".STACK 1000H" << ENDL;
     code << ".DATA" << ENDL;
-    code << "\t__number__ DB \"00000$\"" << ENDL;
+    code << "\tnumber DB \"00000$\"" << ENDL;
 
     const Node* program = node->children[0];
     vector<Node*> unitList;
@@ -181,7 +181,11 @@ void start(const Node* node) {
         if(unitList[i]->label != "func_definition") continue;
         currFunc = unitList[i];
         info = table.lookup(currFunc->children[1]->lexeme);
-        code << "\n" << info->name << " PROC" << ENDL;
+        if(info->name != "main") {
+            code << "\n_" << info->name << " PROC" << ENDL;
+        }
+        else
+            code << "\nmain PROC" << ENDL;
 
         if(info->name == "main") {
             code << "\tMOV AX , @DATA" << ENDL;
@@ -213,7 +217,11 @@ void start(const Node* node) {
             if(info->func != nullptr) code << " " << 2 * info->func->params.size();
             code << ENDL;
         }
-        code << info->name << " ENDP" << ENDL;
+        if(info->name != "main") {
+            code << "\n_" << info->name << " ENDP" << ENDL;
+        }
+        else
+            code << "\nmain ENDP" << ENDL;
     }
 
     std::ifstream printlnFile("println.asm");
@@ -738,7 +746,7 @@ void factor(const Node* node) {
 
     if(label == "ID") {
         argument_list(node->children[2]);
-        code << "\tCALL " << node->children[0]->lexeme << " ; At line " << node->children[0]->startLine << ENDL;
+        code << "\tCALL _" << node->children[0]->lexeme << " ; At line " << node->children[0]->startLine << ENDL;
         code << "\tPUSH AX" << ENDL; // Return value was stored in AX
     }
 }
