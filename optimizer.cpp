@@ -164,7 +164,7 @@ void remove_redundant_arithmetic(vector<string>* tokenList, bool* flags, const i
         for(int j=i+1; j<n; j++) {
             if(!flags[j]) continue;
             if(tokenList[j].size() && tokenList[j][0][0]==';') continue; // Ignore comments
-            if(tokenList[j].size() && (tokenList[j][0]=="CALL" || tokenList[j][0][0]=='L')) break; // Can't cross labels or function calls
+            if(tokenList[j].size() && (tokenList[j][0]=="CALL" || tokenList[j][0][0]=='L' || tokenList[j][0][0]=='J')) break; // Can't cross labels, function calls or jumps
             if(tokenList[j].size() && (reg=="AX" || reg=="DX") && (tokenList[j][0]=="MUL" || tokenList[j][0]=="IMUL" || tokenList[j][0]=="DIV" || tokenList[j][0]=="IDIV" || tokenList[j][0]=="CWD"))
                 break;
 
@@ -187,7 +187,7 @@ void remove_redundant_arithmetic(vector<string>* tokenList, bool* flags, const i
         for(int j=i+1; j<n; j++) {
             if(!flags[j]) continue;
             if(tokenList[j].size() && tokenList[j][0][0]==';') continue; // Ignore comments
-            if(tokenList[j].size() && (tokenList[j][0]=="CALL" || tokenList[j][0][0]=='L')) break; // Can't cross labels or function calls
+            if(tokenList[j].size() && (tokenList[j][0]=="CALL" || tokenList[j][0][0]=='L' || tokenList[j][0][0]=='J')) break; // Can't cross labels, function calls or jumps
             if(tokenList[j].size() && (reg=="AX" || reg=="DX") && (tokenList[j][0]=="MUL" || tokenList[j][0]=="IMUL" || tokenList[j][0]=="DIV" || tokenList[j][0]=="IDIV" || tokenList[j][0]=="CWD"))
                 break;
 
@@ -208,8 +208,12 @@ void optimize_move(string* inputStrings, vector<string>* tokenList, bool* flags,
 
         // Find next instruction that was not removed in a previous optimization stage
         int j;
-        for(j=i+1; j<n; j++) 
-            if(flags[j]) break;
+        for(j=i+1; j<n; j++) {
+            if(!flags[j]) continue;
+            if(!tokenList[j].size()) continue; // Empty instruction
+            if(tokenList[j].size()>0 && tokenList[j][0][0]==';') continue; // Ignore comments
+            break;
+        }
         if(j==n) continue; // No next instruction exists
         if(tokenList[j].size() != 4 || tokenList[j][0] != "MOV") continue;
 
@@ -245,20 +249,20 @@ void optimize_move(string* inputStrings, vector<string>* tokenList, bool* flags,
         if(tokenList[i].size()<4 || tokenList[i][0]!="MOV") continue;
         // MOV REG/MEM , something
         string subject = tokenList[i][1];
-        if(subject == "WORD") subject = tokenList[i][3];
+        if(tokenList[i].size()==6 && tokenList[i][2]=="PTR" && subject=="WORD") subject = tokenList[i][3];
 
         for(int j=i+1; j<n; j++) {
             if(!flags[j]) continue;
             if(tokenList[j].size()>0 && tokenList[j][0][0]==';') continue; // Ignore comments
-            if(tokenList[j].size()>0 && (tokenList[j][0]=="CALL" || tokenList[j][0][0]=='L')) break; // Can't cross labels or function calls
+            if(tokenList[j].size() && (tokenList[j][0]=="CALL" || tokenList[j][0][0]=='L' || tokenList[j][0][0]=='J')) break; // Can't cross labels, function calls or jumps
 
-            if(tokenList[j].size()>=2 && tokenList[j][0]=="MOV" && tokenList[j][1]==subject) {
+            if(tokenList[j].size()==4 && tokenList[j][0]=="MOV" && tokenList[j][1]==subject) {
                 flags[i] = false;
                 break;
             }
 
             //! May be problematic
-            if(tokenList[j].size()>=6 && tokenList[j][0]=="MOV" && tokenList[j][1]=="WORD" && tokenList[j][3]==subject) {
+            if(tokenList[j].size()==6 && tokenList[j][0]=="MOV" && tokenList[j][1]=="WORD" && tokenList[j][3]==subject) {
                 flags[i] = false;
                 break;
             }
