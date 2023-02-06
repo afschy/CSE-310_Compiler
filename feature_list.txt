@@ -32,47 +32,47 @@ __________________
 -   The run_optimizer function takes peephole size as an input, meaning it can handle peepholes of any positive length.
 
 -   Consecutive push-pops of the same register/memory is removed, even if there are unrelated instructions in between.
-    PUSH AX ; Removed
-    ADD BX , 1  ; Unrelated
-    POP AX  ; Removed
+        PUSH AX ; Removed
+        ADD BX , 1  ; Unrelated
+        POP AX  ; Removed
 
 -   Consecutive push-pops of two different reigsters/memory is replaced with a single move instruction, even if there
     are unrelated instructions in between.
-    PUSH AX
-    ADD BX , DX ;Unrelated
-    POP CX
+        PUSH AX
+        ADD BX , DX ;Unrelated
+        POP CX
     Is replaced with:
-    ADD BX , DX
-    MOV CX , AX
+        ADD BX , DX
+        MOV CX , AX
 
 -   Direct addition/subtraction by 0 and multiplication by 1 is removed.
 
 -   Indirect addition/subtraction by 0 and multiplication by 1 is removed even if there are unrelated instructions
     in between, such as:
-    MOV CX , 0
-    ADD BX , DX ; Unrelated
-    ADD AX , CX ; This instruction is removed
-    MOV CX , 1
-    MOV var , BX    ; Unrelated
-    IMUL CX ; This instruction is removed
+        MOV CX , 0
+        ADD BX , DX ; Unrelated
+        ADD AX , CX ; This instruction is removed
+        MOV CX , 1
+        MOV var , BX    ; Unrelated
+        IMUL CX ; This instruction is removed
 
 -   Division by 1 was not removed because it may cause complications with modulus operations.
 
 -   Redundant consecutive moves are removed, such as:
-    MOV a , b
-    MOV b , a   ; This instruction is removed
+        MOV a , b
+        MOV b , a   ; This instruction is removed
 
 -   If a move is rendered redundant by a following move, then that move is removed even if there are unrelated instructions
     in between. Example:
-    MOV a , 1   ; This instruction is removed because of the last instruction
-    ADD AX , BX ; Unrelated
-    SUB CX , DX ; Unrelated
-    MOV a , 2
+        MOV a , 1   ; This instruction is removed because of the last instruction
+        ADD AX , BX ; Unrelated
+        SUB CX , DX ; Unrelated
+        MOV a , 2
 
--   If no memory location is involved, then double moves are replaced with single moves, such as:
-    MOV AX , 5
-    MOV var , AX
+-   If no memory location is involved, then consecutive double moves are replaced with single moves, such as:
+        MOV AX , 5
+        MOV var , AX
     Are replaced with:
-    MOV WORD PTR var , 5
+        MOV WORD PTR var , 5
     This situation only arises because of push-pop optimization, and optimizing this should not break anything. However,
     there still is a very small chance of unintended consequences since testing every possible scenario was not possible.
