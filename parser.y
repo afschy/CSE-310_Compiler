@@ -1422,13 +1422,17 @@ int main(int argc,char *argv[])
 	fprintf(logout, "Total Errors: %d\n", error_count);
 	print_tree(parseout, 0, root);
 
-	start(root);
-	int p=2, q=32;
-	/* std::cout<<"Enter optimizer iteration count: ";
-	std::cin>>p;
-	std::cout<<"Enter peephole size: ";
-	std::cin>>q; */
-	run_optimizer(p, q);
+	if(error_count)
+		std::cout<<"The program contains errors, code cannot be generated\n";
+	else {
+		start(root);
+		int p=2, q=32;
+		/* std::cout<<"Enter optimizer iteration count: ";
+		std::cin>>p;
+		std::cout<<"Enter peephole size: ";
+		std::cin>>q; */
+		run_optimizer(p, q);
+	}	
 
 	fclose(fin);
 	fclose(logout);
