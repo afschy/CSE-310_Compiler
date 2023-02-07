@@ -14,7 +14,7 @@ __________________
 
 -   Instead of writing "SUB SP , something" many, many times for local variables, the stack space for all local variables
     in a function was allocated at the beginning of the function. This reduces the instruction count by a lot in functions
-    with many local variables.
+    with many local variables. It also avoids complications regarding variable declarations inside loops.
 
 -   Can write return; in void functions. This was not a part of the given grammar.
 

@@ -703,11 +703,12 @@ void unary_expression(const Node* node) {
     code << "\tPOP AX" << ENDL;
     code << "\tCMP AX , 0" << ENDL;
     code << "\tJE " << one_label << ENDL;
-    code << "\tPUSH 0" << ENDL;
+    code << "\tMOV AX , 0" << ENDL;
     code << "\tJMP " << end_label << ENDL;
     code << one_label << ":" << ENDL;
-    code << "\tPUSH 1" << ENDL;
+    code << "\tMOV AX , 1" << ENDL;
     code << end_label << ":" << ENDL;
+    code << "\tPUSH AX" << ENDL;
 }
 
 void factor(const Node* node) {
