@@ -1,78 +1,82 @@
 Code generation
 __________________
 
--   Implemented using parse tree traversal and on-the-fly code generation.
+--	Implemented using parse tree traversal and on-the-fly code generation.
 
--   Recursive functions are supported.
+--	Recursive functions are supported.
 
--   Every statement and function call is annotated using comments.
+--	Every statement and function call is annotated using comments.
 
--   Extensive use of recursion optimization.
+--	Extensive use of recursion optimization.
 
--   Assembly is not case-sensitive, whereas C is. Also, there are many keywords in assembly that can be used as variables
-    in C. These cases have been handled.
+--	Assembly is not case-sensitive, whereas C is. Also, there are many keywords in assembly that can be used as variables
+	in C. These cases have been handled.
 
--   Instead of writing "SUB SP , something" many, many times for local variables, the stack space for all local variables
-    in a function was allocated at the beginning of the function. This reduces the instruction count by a lot in functions
-    with many local variables. It also avoids complications regarding variable declarations inside loops.
+--	Instead of writing "SUB SP , something" many, many times for local variables, the stack space for all local variables
+	in a function was allocated at the beginning of the function. This reduces the instruction count by a lot in functions
+	with many local variables. It also avoids complications regarding variable declarations inside loops.
 
--   Can write return; in void functions. This was not a part of the given grammar.
+--	Can write return; in void functions. This was not a part of the given grammar.
 
--   println can print the value of any expression, not just non-array variables as in the grammar.
+--	println can print the value of any expression, not just non-array variables as in the grammar.
 
--   No code is generated if the program contains any error, preserving the continuity from previous offlines.
+--	No code is generated if the program contains any error, preserving the continuity from previous offlines.
 
--   Providing the declaration for a function, but never providing the definition is counted as an error since there are
-    no include files.
+--	Providing the declaration for a function, but never providing the definition is counted as an error since there are
+	no include files.
 
 
 Optimization
 __________________
 
--   The run_optimizer function takes peephole size as an input, meaning it can handle peepholes of any positive length.
+--	The run_optimizer function takes peephole size as an input, meaning it can handle peepholes of any positive length.
 
--   Consecutive push-pops of the same register/memory is removed, even if there are unrelated instructions in between.
-        PUSH AX ; Removed
-        ADD BX , 1  ; Unrelated
-        POP AX  ; Removed
+--	Consecutive push-pops of the same register/memory is removed, even if there are unrelated instructions in between.
+		PUSH AX ; Removed
+		ADD BX , 1  ; Unrelated
+		POP AX  ; Removed
 
--   Consecutive push-pops of two different reigsters/memory is replaced with a single move instruction, even if there
-    are unrelated instructions in between.
-        PUSH AX
-        ADD BX , DX ;Unrelated
-        POP CX
-    Is replaced with:
-        ADD BX , DX
-        MOV CX , AX
+--	Consecutive push-pops of two different reigsters/memory is replaced with a single move instruction, even if there
+	are unrelated instructions in between.
+		PUSH AX
+		ADD BX , DX ; Unrelated
+		POP CX
+	Is replaced with:
+		ADD BX , DX
+		MOV CX , AX
 
--   Direct addition/subtraction by 0 and multiplication by 1 is removed.
+--	Redundant JMP instructions are removed.
+		JMP L10 ; This line is removed
+		L10:
 
--   Indirect addition/subtraction by 0 and multiplication by 1 is removed even if there are unrelated instructions
-    in between, such as:
-        MOV CX , 0
-        ADD BX , DX ; Unrelated
-        ADD AX , CX ; This instruction is removed
-        MOV CX , 1
-        MOV var , BX    ; Unrelated
-        IMUL CX ; This instruction is removed
+--	Direct addition/subtraction by 0 and multiplication by 1 is removed.
 
--   Division by 1 was not removed because it may cause complications with modulus operations.
+--	Indirect addition/subtraction by 0 and multiplication by 1 is removed even if there are unrelated instructions
+	in between, such as:
+		MOV CX , 0
+		ADD BX , DX ; Unrelated
+		ADD AX , CX ; This instruction is removed
+		MOV CX , 1
+		MOV var , BX    ; Unrelated
+		IMUL CX ; This instruction is removed
 
--   Redundant consecutive moves are removed, such as:
-        MOV a , b
-        MOV b , a   ; This instruction is removed
+--	Division by 1 was not removed because it may cause complications with modulus operations.
 
--   If a move is rendered redundant by a following move, then that move is removed even if there are unrelated instructions
-    in between. Example:
-        MOV a , 1   ; This instruction is removed because of the last instruction
-        ADD AX , BX ; Unrelated
-        SUB CX , DX ; Unrelated
-        MOV a , 2
+--	Redundant consecutive moves are removed, such as:
+		MOV a , b
+		MOV b , a   ; This instruction is removed
 
--   If no memory location is involved, then consecutive double moves are replaced with single moves, such as:
-        MOV AX , 5
-        MOV var , AX
-    Are replaced with:
-        MOV WORD PTR var , 5
-    This situation only arises because of push-pop optimization, and optimizing this should not break anything. However,
-    there still is a very small chance of unintended consequences since testing every possible scenario was not possible.
+--	If a move is rendered redundant by a following move, then that move is removed even if there are unrelated instructions
+	in between. Example:
+		MOV a , 1   ; This instruction is removed because of the last instruction
+		ADD AX , BX ; Unrelated
+		SUB CX , DX ; Unrelated
+		MOV a , 2
+
+--	If no memory location is involved, then consecutive double moves are replaced with single moves, such as:
+		MOV AX , 5
+		MOV var , AX
+	Are replaced with:
+		MOV WORD PTR var , 5
+	This situation only arises because of push-pop optimization, and optimizing this should not break anything. However,
+	there still is a very small chance of unintended consequences since testing every possible scenario was not possible.

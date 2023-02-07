@@ -56,6 +56,26 @@ void copy_whole_file(const string& oldFileName, const string& newFileName) {
     file2.close();
 }
 
+void remove_redundant_jmp(vector<string>* tokenList, bool* flags, const int n) {
+    for(int i=0; i<n; i++) {
+        if(!flags[i]) continue;
+        if(!tokenList[i].size()) continue; // Empty line
+        if(tokenList[i][0] != "JMP") continue; // Not a JMP instruction
+
+        string jmp_label = tokenList[i][1]; // The label jumped to
+        int j;
+        for(j=i+1; j<n; j++) {
+            if(!tokenList[j].size()) continue; // Ignore empty lines
+            if(tokenList[j][0][0] == ';') continue; // Ignore comments
+            break;
+        }
+
+        if(j==n) continue;
+        if(tokenList[j][0] != (jmp_label + ":")) continue; // Not the label jumped to, or not a label at all
+        flags[i] = false;
+    }
+}
+
 // Replaces redundant push-pops with MOV instructions or removes them entirely
 void optimize_push_pop(string* inputStrings, vector<string>* tokenList, bool* flags, const int n) {
     string pushed, popped;
@@ -314,6 +334,7 @@ void optimize(const string& oldFileName, const string& newFileName, const int ch
             }
         }
 
+        remove_redundant_jmp(tokenList, flags, n);
         optimize_push_pop(inputStrings, tokenList, flags, n);
         remove_redundant_arithmetic(tokenList, flags, n);
         optimize_move(inputStrings, tokenList, flags, n);
