@@ -293,8 +293,10 @@ void optimize_move(string* inputStrings, vector<string>* tokenList, bool* flags,
             }
             
             bool useFlag = false;
-            for(int k=0; k<tokenList[j].size(); k++) 
+            for(int k=0; k<tokenList[j].size(); k++) {
                 if(tokenList[j][k] == subject) useFlag = true;
+                if(tokenList[j][k].find(subject) != std::string::npos) useFlag = true;
+            }
             if(useFlag) break;
             if(tokenList[j].size() && (subject=="AX" || subject=="DX") && (tokenList[j][0]=="MUL" || tokenList[j][0]=="IMUL" || tokenList[j][0]=="DIV" || tokenList[j][0]=="IDIV" || tokenList[j][0]=="CWD"))
                 break;
@@ -369,4 +371,5 @@ void run_optimizer(const int iter, const int chunkSize) {
     // }
 }
 
+// int main() {run_optimizer(2, 128);}
 #endif
