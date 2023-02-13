@@ -11,7 +11,7 @@
 #include "merged.hpp"
 #include "node.hpp"
 using std::vector, std::string, std::isnan, std::to_string;
-#define ENDL "\n";
+#define ENDL std::endl;
 
 typedef void (*fptr_expr_void)(const Node* node);
 
@@ -55,6 +55,11 @@ void term(const Node* node);
 void unary_expression(const Node* node);
 void factor(const Node* node);
 void argument_list(const Node* node);
+
+void branching_expression_statement(const Node* node, const string& body_label, const string& end_label);
+void branching_expression(const Node* node, const string& body_label, const string& end_label);
+void branching_logic_expression(const Node* node, const string& body_label, const string& end_label);
+void branching_rel_expression(const Node* node, const string& body_label, const string& end_label);
 
 fptr_expr_void get_expr_void_funct(string label) {
     if(label == "expression_statement") return expression_statement;
@@ -291,13 +296,10 @@ void statement(const Node* node) {
     // IF LPAREN expression RPAREN statement
     if(node->children[0]->label == "IF" && node->children.size() == 5) {
         code << "\n\t; if statement starting at line " << node->startLine << ENDL;
-        expression(node->children[2]);
-
         string next_label = get_label(), end_label = get_label();
-        code << "\tPOP AX" << ENDL;
-        code << "\tCMP AX , 0" << ENDL;
-        code << "\tJNE " << next_label << ENDL;
-        code << "\tJMP " << end_label << ENDL;
+
+        branching_expression(node->children[2], next_label, end_label);
+
         code << next_label << ":" << ENDL;
         statement(node->children[4]);
         code << end_label << ":" << ENDL;
@@ -308,19 +310,18 @@ void statement(const Node* node) {
     // IF LPAREN expression RPAREN statement ELSE statement
     if(node->children[0]->label == "IF") {
         code << "\n\t; if-else statement starting at line " << node->startLine << ENDL;
-        expression(node->children[2]);
 
         string if_label = get_label(), else_label = get_label(), end_label = get_label();
-        code << "\tPOP AX" << ENDL;
-        code << "\tCMP AX , 0" << ENDL;
-        code << "\tJNE " << if_label << ENDL;
-        code << "\tJMP " << else_label << ENDL;
+        branching_expression(node->children[2], if_label, else_label);
+
         code << if_label << ":" << ENDL;
         statement(node->children[4]);
         code << "\tJMP " << end_label << ENDL;
+
         code << else_label << ":" << ENDL;
         statement(node->children[6]);
         code << end_label << ":" << ENDL;
+
         code << "\t; if-else statement ending at line " << node->endLine << ENDL;
         return;
     }
@@ -330,11 +331,7 @@ void statement(const Node* node) {
         string start_label = get_label(), body_label = get_label(), end_label = get_label();
         
         code << start_label << ":\t; while loop starting at line " << node->startLine << ENDL;
-        expression(node->children[2]);
-        code << "\tPOP AX" << ENDL;
-        code << "\tCMP AX , 0" << ENDL;
-        code << "\tJNE " << body_label << ENDL;
-        code << "\tJMP " << end_label << ENDL;
+        branching_expression(node->children[2], body_label, end_label);
 
         code << body_label << ":" << ENDL;
         statement(node->children[4]);
@@ -351,10 +348,7 @@ void statement(const Node* node) {
         string start_label = get_label(), body_label = get_label(), end_label = get_label();
 
         code << start_label << ":" << ENDL;
-        expression_statement(node->children[3]);
-        code << "\tCMP AX , 0" << ENDL;
-        code << "\tJNE " << body_label << ENDL;
-        code << "\tJMP " << end_label << ENDL;
+        branching_expression_statement(node->children[3], body_label, end_label);
 
         code << body_label << ":" << ENDL;
         statement(node->children[6]);
@@ -777,6 +771,105 @@ void argument_list(const Node* node) {
         else logic_expression(arguments->children[2]);
         arguments = arguments->children[0];
     }
+}
+
+void branching_expression_statement(const Node* node, const string& body_label, const string& end_label) {
+    if(node->children.size() == 1) {
+        code << "\tJMP " << body_label << ENDL;
+        return;
+    }
+    branching_expression(node->children[0], body_label, end_label);
+}
+
+void branching_expression(const Node* node, const string& body_label, const string& end_label) {
+    if(node->children.size() == 1)
+        return branching_logic_expression(node->children[0], body_label, end_label);
+
+    // Starting variable assignment
+    logic_expression(node->children[2]);
+    Node* variable = node->children[0];
+    SymbolInfo* info = table.lookup(variable->children[0]->lexeme);
+    
+    if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
+        code << "\tPOP AX" << ENDL;
+        code << "\tMOV " << info->asmName << " , AX" << ENDL;
+    }
+
+    else if(variable->children.size() == 1) { // local non-array variable
+        code << "\tPOP AX" << ENDL;
+        code << "\tMOV BP[" << info->stackOffset << "] , AX" << ENDL;
+    }
+
+    else if(info->id == 1) { // global array
+        code << "\tPOP BX" << ENDL;
+        expression(variable->children[2]);
+        code << "\tPOP SI" << ENDL;
+        code << "\tSHL SI , 1" << ENDL;
+        code << "\tMOV " << info->asmName << "[SI] , BX" << ENDL;
+        code << "\tMOV AX , BX" << ENDL;
+    }
+
+    else { // local array
+        code << "\tPOP BX" << ENDL;
+        expression(variable->children[2]);
+        code << "\tPOP SI" << ENDL;
+        code << "\tSHL SI , 1" << ENDL;
+        code << "\tADD SI , " << info->stackOffset << ENDL;
+        code << "\tMOV BP[SI] , BX" << ENDL;
+        code << "\tMOV AX , BX" << ENDL;
+    }
+    
+    code << "\tCMP AX , 0" << ENDL;
+    code << "\tJNE " << body_label << ENDL;
+    code << "\tJMP " << end_label << ENDL;
+}
+
+void branching_logic_expression(const Node* node, const string& body_label, const string& end_label) {
+    if(node->children.size() == 1)
+        return branching_rel_expression(node->children[0], body_label, end_label);
+    
+    if(node->children[1]->lexeme == "||") {
+        string mid_label = get_label();
+        branching_rel_expression(node->children[0], body_label, mid_label);
+
+        code << mid_label << ":" << ENDL;
+        branching_rel_expression(node->children[2], body_label, end_label);
+        return;
+    }
+
+    string mid_label = get_label(); 
+    branching_rel_expression(node->children[0], mid_label, end_label);
+
+    code << mid_label << ":" << ENDL;
+    branching_rel_expression(node->children[2], body_label, end_label);
+}
+
+void branching_rel_expression(const Node* node, const string& body_label, const string& end_label) {
+    if(node->children.size() == 1) {
+        simple_expression(node->children[0]);
+        code << "\tPOP AX" << ENDL;
+        code << "\tCMP AX , 0" << ENDL;
+        code << "\tJNE " << body_label << ENDL;
+        code << "\tJMP " << end_label << ENDL;
+        return;
+    }
+
+    simple_expression(node->children[0]);
+    simple_expression(node->children[2]);
+    code << "\tPOP CX" << ENDL;
+    code << "\tPOP AX" << ENDL;
+    string op = node->children[1]->lexeme;
+
+    code << "\tCMP AX , CX" << ENDL;
+
+    if(op == "<") code << "\tJL " << body_label << ENDL;
+    if(op == "<=") code << "\tJLE " << body_label << ENDL;
+    if(op == ">") code << "\tJG " << body_label << ENDL;
+    if(op == ">=") code << "\tJGE " << body_label << ENDL;
+    if(op == "==") code << "\tJE " << body_label << ENDL;
+    if(op == "!=") code << "\tJNE " << body_label << ENDL;
+
+    code << "\tJMP " << end_label << ENDL;
 }
 
 #endif
