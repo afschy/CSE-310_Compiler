@@ -829,35 +829,19 @@ void branching_logic_expression(const Node* node, const string& body_label, cons
         return branching_rel_expression(node->children[0], body_label, end_label);
     
     if(node->children[1]->lexeme == "||") {
-        // string one_label = get_label(), end_label = get_label();
-        rel_expression(node->children[0]);
-        code << "\tPOP AX" << ENDL;
-        code << "\tCMP AX , 0" << ENDL;
-        code << "\tJNE " << body_label << ENDL;
+        string mid_label = get_label();
+        branching_rel_expression(node->children[0], body_label, mid_label);
 
-        rel_expression(node->children[2]);
-        code << "\tPOP AX" << ENDL;
-        code << "\tCMP AX , 0" << ENDL;
-        code << "\tJNE " << body_label << ENDL;
-
-        code << "\tJMP " << end_label << ENDL;
+        code << mid_label << ":" << ENDL;
+        branching_rel_expression(node->children[2], body_label, end_label);
         return;
     }
 
-    string zero_label = get_label(); 
-    rel_expression(node->children[0]);
-    code << "\tPOP AX" << ENDL;
-    code << "\tCMP AX , 0" << ENDL;
-    code << "\tJE " << zero_label << ENDL;
+    string mid_label = get_label(); 
+    branching_rel_expression(node->children[0], mid_label, end_label);
 
-    rel_expression(node->children[2]);
-    code << "\tPOP AX" << ENDL;
-    code << "\tCMP AX , 0" << ENDL;
-    code << "\tJE " << zero_label << ENDL;
-
-    code << "\tJMP " << body_label << ENDL;
-    code << zero_label << ":" << ENDL;
-    code << "\tJMP " << end_label << ENDL;
+    code << mid_label << ":" << ENDL;
+    branching_rel_expression(node->children[2], body_label, end_label);
 }
 
 void branching_rel_expression(const Node* node, const string& body_label, const string& end_label) {
