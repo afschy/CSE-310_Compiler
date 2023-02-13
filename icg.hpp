@@ -11,7 +11,7 @@
 #include "merged.hpp"
 #include "node.hpp"
 using std::vector, std::string, std::isnan, std::to_string;
-#define ENDL std::endl;
+#define ENDL "\n";
 
 typedef void (*fptr_expr_void)(const Node* node);
 
@@ -829,8 +829,11 @@ void branching_logic_expression(const Node* node, const string& body_label, cons
         return branching_rel_expression(node->children[0], body_label, end_label);
     
     if(node->children[1]->lexeme == "||") {
-        string mid_label = get_label();
-        branching_rel_expression(node->children[0], body_label, mid_label);
+        string pass_label = get_label(), mid_label = get_label();
+        branching_rel_expression(node->children[0], pass_label, mid_label);
+
+        code << pass_label << ":" << ENDL;
+        code << "\tJMP " << body_label << ENDL;
 
         code << mid_label << ":" << ENDL;
         branching_rel_expression(node->children[2], body_label, end_label);
