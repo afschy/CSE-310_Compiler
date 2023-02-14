@@ -20,9 +20,6 @@ std::ofstream code;
 // Used in return statements to jump to the label before RET
 string return_label;
 
-// Used to restore stack
-int local_var_count;
-
 int labelCount = 0;
 int currStack = 0;
 
@@ -510,11 +507,11 @@ void expression(const Node* node) {
     }
 
     // Starting variable assignment
-    logic_expression(node->children[2]);
     Node* variable = node->children[0];
     SymbolInfo* info = table.lookup(variable->children[0]->lexeme);
     
     if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
+        logic_expression(node->children[2]);
         code << "\tPOP AX" << ENDL;
         code << "\tMOV " << info->asmName << " , AX" << ENDL;
         code << "\tPUSH AX" << ENDL;
@@ -522,6 +519,7 @@ void expression(const Node* node) {
     }
 
     if(variable->children.size() == 1) { // local non-array variable
+        logic_expression(node->children[2]);
         code << "\tPOP AX" << ENDL;
         code << "\tMOV BP[" << info->stackOffset << "] , AX" << ENDL;
         code << "\tPUSH AX" << ENDL;
@@ -529,23 +527,25 @@ void expression(const Node* node) {
     }
 
     if(info->id == 1) { // global array
-        code << "\tPOP BX" << ENDL;
+        logic_expression(node->children[2]);
         expression(variable->children[2]);
         code << "\tPOP SI" << ENDL;
+        code << "\tPOP AX" << ENDL;
         code << "\tSHL SI , 1" << ENDL;
-        code << "\tMOV " << info->asmName << "[SI] , BX" << ENDL;
-        code << "\tPUSH BX" << ENDL;
+        code << "\tMOV " << info->asmName << "[SI] , AX" << ENDL;
+        code << "\tPUSH AX" << ENDL;
         return;
     }
 
     // local array
-    code << "\tPOP BX" << ENDL;
+    logic_expression(node->children[2]);
     expression(variable->children[2]);
     code << "\tPOP SI" << ENDL;
+    code << "\tPOP AX" << ENDL;
     code << "\tSHL SI , 1" << ENDL;
     code << "\tADD SI , " << info->stackOffset << ENDL;
-    code << "\tMOV BP[SI] , BX" << ENDL;
-    code << "\tPUSH BX" << ENDL;
+    code << "\tMOV BP[SI] , AX" << ENDL;
+    code << "\tPUSH AX" << ENDL;
 }
 
 void logic_expression(const Node* node) {
@@ -786,37 +786,38 @@ void branching_expression(const Node* node, const string& body_label, const stri
         return branching_logic_expression(node->children[0], body_label, end_label);
 
     // Starting variable assignment
-    logic_expression(node->children[2]);
     Node* variable = node->children[0];
     SymbolInfo* info = table.lookup(variable->children[0]->lexeme);
     
     if(variable->children.size() == 1 && info->id == 1) { // global non-array variable
+        logic_expression(node->children[2]);
         code << "\tPOP AX" << ENDL;
         code << "\tMOV " << info->asmName << " , AX" << ENDL;
     }
 
     else if(variable->children.size() == 1) { // local non-array variable
+        logic_expression(node->children[2]);
         code << "\tPOP AX" << ENDL;
         code << "\tMOV BP[" << info->stackOffset << "] , AX" << ENDL;
     }
 
     else if(info->id == 1) { // global array
-        code << "\tPOP BX" << ENDL;
+        logic_expression(node->children[2]);
         expression(variable->children[2]);
         code << "\tPOP SI" << ENDL;
+        code << "\tPOP AX" << ENDL;
         code << "\tSHL SI , 1" << ENDL;
-        code << "\tMOV " << info->asmName << "[SI] , BX" << ENDL;
-        code << "\tMOV AX , BX" << ENDL;
+        code << "\tMOV " << info->asmName << "[SI] , AX" << ENDL;
     }
 
     else { // local array
-        code << "\tPOP BX" << ENDL;
+        logic_expression(node->children[2]);
         expression(variable->children[2]);
         code << "\tPOP SI" << ENDL;
+        code << "\tPOP AX" << ENDL;
         code << "\tSHL SI , 1" << ENDL;
         code << "\tADD SI , " << info->stackOffset << ENDL;
-        code << "\tMOV BP[SI] , BX" << ENDL;
-        code << "\tMOV AX , BX" << ENDL;
+        code << "\tMOV BP[SI] , AX" << ENDL;
     }
     
     code << "\tCMP AX , 0" << ENDL;
