@@ -790,10 +790,10 @@ void branching_expression(const Node* node, const string& body_label, const stri
         return branching_logic_expression(node->children[0], body_label, end_label);
 
     expression(node);
-    code << "POP AX" << ENDL;
-    code << "CMP AX , 0" << ENDL;
-    code << "JNE " << body_label << ENDL;
-    code << "JMP " << end_label << ENDL;
+    code << "\tPOP AX" << ENDL;
+    code << "\tCMP AX , 0" << ENDL;
+    code << "\tJNE " << body_label << ENDL;
+    code << "\tJMP " << end_label << ENDL;
 }
 
 void branching_logic_expression(const Node* node, const string& body_label, const string& end_label) {
@@ -844,20 +844,20 @@ void branching_simple_expression(const Node* node, const string& body_label, con
     if(node->children.size() == 1) return branching_term(node->children[0], body_label, end_label);
 
     simple_expression(node);
-    code << "POP AX" << ENDL;
-    code << "CMP AX , 0" << ENDL;
-    code << "JNE " << body_label << ENDL;
-    code << "JMP " << end_label << ENDL;
+    code << "\tPOP AX" << ENDL;
+    code << "\tCMP AX , 0" << ENDL;
+    code << "\tJNE " << body_label << ENDL;
+    code << "\tJMP " << end_label << ENDL;
 }
 
 void branching_term(const Node* node, const string& body_label, const string& end_label) {
     if(node->children.size() == 1) return branching_unary_expression(node->children[0], body_label, end_label);
 
     term(node);
-    code << "POP AX" << ENDL;
-    code << "CMP AX , 0" << ENDL;
-    code << "JNE " << body_label << ENDL;
-    code << "JMP " << end_label << ENDL;
+    code << "\tPOP AX" << ENDL;
+    code << "\tCMP AX , 0" << ENDL;
+    code << "\tJNE " << body_label << ENDL;
+    code << "\tJMP " << end_label << ENDL;
 }
 
 void branching_unary_expression(const Node* node, const string& body_label, const string& end_label) {
@@ -869,16 +869,16 @@ void branching_unary_expression(const Node* node, const string& body_label, cons
     string fail_label = get_label();
     branching_unary_expression(node->children[1], fail_label, body_label);
     code << fail_label << ":" << ENDL;
-    code << "JMP " << end_label << ENDL;
+    code << "\tJMP " << end_label << ENDL;
 }
 
 void branching_factor(const Node* node, const string& body_label, const string& end_label) {
     string label = node->children[0]->label;
     if(label == "CONST_INT" || label == "CONST_FLOAT") {
         if(stoi(node->children[0]->lexeme)){ 
-            code << "JMP " << body_label << ENDL; 
+            code << "\tJMP " << body_label << ENDL; 
         }
-        else code << "JMP " << end_label << ENDL;
+        else code << "\tJMP " << end_label << ENDL;
         return;
     }
 
@@ -887,10 +887,10 @@ void branching_factor(const Node* node, const string& body_label, const string& 
     
     if(label == "variable" || label == "ID") {
         factor(node);
-        code << "POP AX" << ENDL;
-        code << "CMP AX , 0" << ENDL;
-        code << "JNE " << body_label << ENDL;
-        code << "JMP " << end_label << ENDL;
+        code << "\tPOP AX" << ENDL;
+        code << "\tCMP AX , 0" << ENDL;
+        code << "\tJNE " << body_label << ENDL;
+        code << "\tJMP " << end_label << ENDL;
     }
 }
 
