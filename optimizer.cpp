@@ -304,6 +304,25 @@ void optimize_move(string* inputStrings, vector<string>* tokenList, bool* flags,
                 break;
         }
     }
+
+    for(int i=0; i<n; i++) {
+        if(!flags[i]) continue;
+        if(tokenList[i].size() != 4 || tokenList[i][0] != "MOV") continue;
+        if(!is_reg(tokenList[i][1]) || !is_mem(tokenList[i][3])) continue;
+
+        int j;
+        for(j=i+1; j<n; j++) {
+            if(flags[j]) break;
+        }
+        if(j==n) continue;
+
+        if(tokenList[j].size() < 4) continue;
+        string first_four = "";
+        for(int k=0; k<4; k++) first_four += tokenList[j][k];
+
+        if(first_four != ";Expressionstatementending") continue;
+        flags[i] = false;
+    }
 }
 
 void optimize(const string& oldFileName, const string& newFileName, const int chunkSize) {

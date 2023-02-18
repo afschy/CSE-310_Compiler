@@ -518,7 +518,7 @@ void expression(const Node* node) {
         logic_expression(node->children[2]);
         code << "\tPOP AX" << ENDL;
         code << "\tMOV " << info->asmName << " , AX" << ENDL;
-        code << "\tPUSH AX" << ENDL;
+        code << "\tPUSH " << info->asmName << ENDL;
         return;
     }
 
@@ -526,7 +526,7 @@ void expression(const Node* node) {
         logic_expression(node->children[2]);
         code << "\tPOP AX" << ENDL;
         code << "\tMOV BP[" << info->stackOffset << "] , AX" << ENDL;
-        code << "\tPUSH AX" << ENDL;
+        code << "\tPUSH BP[" << info->stackOffset << "]" << ENDL;
         return;
     }
 
@@ -537,7 +537,7 @@ void expression(const Node* node) {
         code << "\tPOP AX" << ENDL;
         code << "\tSHL SI , 1" << ENDL;
         code << "\tMOV " << info->asmName << "[SI] , AX" << ENDL;
-        code << "\tPUSH AX" << ENDL;
+        code << "\tPUSH " << info->asmName << "[SI]" << ENDL;
         return;
     }
 
@@ -549,7 +549,7 @@ void expression(const Node* node) {
     code << "\tSHL SI , 1" << ENDL;
     code << "\tADD SI , " << info->stackOffset << ENDL;
     code << "\tMOV BP[SI] , AX" << ENDL;
-    code << "\tPUSH AX" << ENDL;
+    code << "\tPUSH BP[SI]" << ENDL;
 }
 
 void logic_expression(const Node* node) {
