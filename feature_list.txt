@@ -7,8 +7,6 @@ __________________
 
 --	Every statement and function call is annotated using comments.
 
---	Extensive use of recursion optimization.
-
 --	Assembly is not case-sensitive, whereas C is. Also, there are many keywords in assembly that can be used as variables
 	in C. These cases have been handled.
 
