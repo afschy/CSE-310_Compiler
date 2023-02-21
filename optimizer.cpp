@@ -87,13 +87,16 @@ void optimize_push_pop(string* inputStrings, vector<string>* tokenList, bool* fl
         popped = "";
         int j;
         for(j=i+1; j<n; j++) {
-            if(tokenList[j].size() && (tokenList[j][0]=="CALL" || tokenList[j][0]=="PUSH")) 
+            if(!tokenList[j].size() || !flags[j])    // Ignore empty or deleted lines
+                continue;
+
+            if(tokenList[j][0]=="CALL" || tokenList[j][0]=="PUSH")
                 break;
 
-            if(tokenList[j].size() && (tokenList[j][0][0]=='L' || tokenList[j][0][0]=='J')) 
+            if(tokenList[j][0][0]=='L' || tokenList[j][0][0]=='J')
                 break;
 
-            if(!tokenList[j].size() || tokenList[j][0] != "POP") 
+            if(tokenList[j][0] != "POP") 
                 continue;
             popped = tokenList[j][1];
             break;
@@ -207,7 +210,7 @@ void remove_redundant_arithmetic(vector<string>* tokenList, bool* flags, const i
 
         for(int j=i+1; j<n; j++) {
             if(!flags[j]) continue;
-            if(!tokenList[j].size()) continue;
+            if(!tokenList[j].size()) continue;  // Ignore empty lines
             if(tokenList[j][0][0]==';') continue; // Ignore comments
             if(tokenList[j][0]=="CALL" || tokenList[j][0][0]=='L' || tokenList[j][0][0]=='J') break; // Can't cross labels, function calls or jumps
             if((reg=="AX" || reg=="DX") && (tokenList[j][0]=="MUL" || tokenList[j][0]=="IMUL" || tokenList[j][0]=="DIV" || tokenList[j][0]=="IDIV" || tokenList[j][0]=="CWD"))
@@ -275,8 +278,9 @@ void optimize_move(string* inputStrings, vector<string>* tokenList, bool* flags,
 
         for(int j=i+1; j<n; j++) {
             if(!flags[j]) continue;
-            if(tokenList[j].size()>0 && tokenList[j][0][0]==';') continue; // Ignore comments
-            if(tokenList[j].size() && (tokenList[j][0]=="CALL" || tokenList[j][0][0]=='L' || tokenList[j][0][0]=='J')) break; // Can't cross labels, function calls or jumps
+            if(!tokenList[j].size()) continue;  // Ignore empty lines
+            if(tokenList[j][0][0]==';') continue; // Ignore comments
+            if(tokenList[j][0]=="CALL" || tokenList[j][0][0]=='L' || tokenList[j][0][0]=='J') break; // Can't cross labels, function calls or jumps
 
             if(tokenList[j].size()==4 && tokenList[j][0]=="MOV" && tokenList[j][1]==subject) {
                 flags[i] = false;
@@ -300,7 +304,7 @@ void optimize_move(string* inputStrings, vector<string>* tokenList, bool* flags,
                 if(subject.find("[" + tokenList[j][k] + "]") != std::string::npos) useFlag = true;
             }
             if(useFlag) break;
-            if(tokenList[j].size() && (subject=="AX" || subject=="DX") && (tokenList[j][0]=="MUL" || tokenList[j][0]=="IMUL" || tokenList[j][0]=="DIV" || tokenList[j][0]=="IDIV" || tokenList[j][0]=="CWD"))
+            if((subject=="AX" || subject=="DX") && (tokenList[j][0]=="MUL" || tokenList[j][0]=="IMUL" || tokenList[j][0]=="DIV" || tokenList[j][0]=="IDIV" || tokenList[j][0]=="CWD"))
                 break;
         }
     }
