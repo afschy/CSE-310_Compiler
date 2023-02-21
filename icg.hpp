@@ -885,13 +885,11 @@ void branching_factor(const Node* node, const string& body_label, const string& 
     if(label == "LPAREN")
         return branching_expression(node->children[1], body_label, end_label);
     
-    if(label == "variable" || label == "ID") {
-        factor(node);
-        code << "\tPOP AX" << ENDL;
-        code << "\tCMP AX , 0" << ENDL;
-        code << "\tJNE " << body_label << ENDL;
-        code << "\tJMP " << end_label << ENDL;
-    }
+    factor(node);
+    code << "\tPOP AX" << ENDL;
+    code << "\tCMP AX , 0" << ENDL;
+    code << "\tJNE " << body_label << ENDL;
+    code << "\tJMP " << end_label << ENDL;
 }
 
 #endif
